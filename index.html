@@ -70,7 +70,7 @@
     <p>Take a clear photo of the front of your driver’s licence, passport, or Ontario Photo Card.</p>
     <input type="file" accept="image/*" capture="environment" id="id-input" onchange="previewId(this)">
     <img id="id-preview" class="preview" style="display:none;">
-    <button onclick="go(4)">Submit</button>
+    <button id="submit-btn" onclick="submitPickup()">Submit</button>
   </div>
 
   <!-- Step 4: Success -->
@@ -122,6 +122,44 @@
       const img = document.getElementById('id-preview');
       img.src = URL.createObjectURL(file);
       img.style.display = 'block';
+    }
+
+    async function submitPickup() {
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+
+      const name = document.getElementById('pickup-name').value;
+      const role = document.getElementById('role').value;
+      const signature = canvas.toDataURL('image/png');
+      const idInput = document.getElementById('id-input');
+      let idPhoto = null;
+
+      if (idInput.files[0]) {
+        idPhoto = await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(idInput.files[0]);
+        });
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token') || 'demo-token';
+
+      try {
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, name, role, signature, idPhoto })
+        });
+        const data = await res.json();
+        console.log('Submit response:', data);
+        go(4);
+      } catch (err) {
+        alert('Submission failed. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+      }
     }
   </script>
 </body>
