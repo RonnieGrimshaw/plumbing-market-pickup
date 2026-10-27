@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Pickup Receipt — Plumbing Market</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 1rem; background: #f8f9fa; color: #222; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+    .progress { display: flex; gap: 0.5rem; margin: 1rem 0; }
+    .step { flex: 1; height: 6px; background: #ddd; border-radius: 3px; }
+    .step.active { background: #0a5; }
+    .card { background: white; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    button, .btn { display: block; width: 100%; padding: 0.9rem; font-size: 1.1rem; border: none; border-radius: 8px; background: #0a5; color: white; margin-top: 0.75rem; }
+    button.secondary { background: #eee; color: #333; }
+    #signature-pad { border: 1px solid #ccc; border-radius: 8px; width: 100%; height: 180px; background: #fff; touch-action: none; }
+    .preview { max-width: 100%; border-radius: 8px; margin-top: 0.5rem; }
+    .items { font-size: 0.95rem; }
+    .items li { margin: 0.3rem 0; }
+  </style>
+</head>
+<body>
+  <h1>Digital Pickup Receipt</h1>
+  <p>Order #<span id="order-num">TEST-1001</span></p>
+
+  <div class="progress">
+    <div class="step active" id="p1"></div>
+    <div class="step" id="p2"></div>
+    <div class="step" id="p3"></div>
+    <div class="step" id="p4"></div>
+  </div>
+
+  <!-- Step 1: Confirm -->
+  <div id="step1" class="card">
+    <h2>Confirm</h2>
+    <p><strong>Items</strong> (visible before signing)</p>
+    <ul class="items">
+      <li>2× 3/4" Copper Elbow — SKU CU-EL-34</li>
+      <li>1× 10 ft Type L Copper Tube — SKU CU-TL-10</li>
+    </ul>
+    <label>Person picking up<br><input id="pickup-name" value="Alex Rivera" style="width:100%;padding:0.5rem;margin-top:0.3rem;"></label>
+    <label style="display:block;margin-top:0.5rem;">Role<br>
+      <select id="role" style="width:100%;padding:0.5rem;">
+        <option>Self</option><option>Employee</option><option>Contractor</option><option>Family</option>
+      </select>
+    </label>
+    <button onclick="go(2)">Continue</button>
+  </div>
+
+  <!-- Step 2: Consent + Sign -->
+  <div id="step2" class="card" style="display:none;">
+    <h2>Consent & Sign</h2>
+    <p style="font-size:0.9rem;background:#f0f0f0;padding:0.75rem;border-radius:6px;">
+      I confirm that I am the person named above (or an authorized representative).<br>
+      I have received the items listed in this order in good condition.<br>
+      Once the items are handed over, they become my responsibility.<br>
+      I agree to sign this digital pickup receipt electronically.<br>
+      I understand that my signature and a photograph of my government-issued photo ID will be stored for up to 3 years for fraud prevention.
+    </p>
+    <p style="font-size:0.8rem;color:#666;">Consent version v1.0-2026-10-26</p>
+    <canvas id="signature-pad"></canvas>
+    <button class="secondary" onclick="clearSig()">Clear / Redo</button>
+    <button onclick="go(3)">Accept & Continue</button>
+  </div>
+
+  <!-- Step 3: ID Photo -->
+  <div id="step3" class="card" style="display:none;">
+    <h2>Photo ID</h2>
+    <p>Take a clear photo of the front of your driver’s licence, passport, or Ontario Photo Card.</p>
+    <input type="file" accept="image/*" capture="environment" id="id-input" onchange="previewId(this)">
+    <img id="id-preview" class="preview" style="display:none;">
+    <button onclick="go(4)">Submit</button>
+  </div>
+
+  <!-- Step 4: Success -->
+  <div id="step4" class="card" style="display:none;">
+    <h2>Pickup Verified</h2>
+    <p>Thank you. Your digital pickup receipt has been recorded.</p>
+    <p>A certificate has been emailed and an SMS confirmation sent.</p>
+    <p style="font-size:0.9rem;color:#666;">This link is now view-only.</p>
+  </div>
+
+  <p style="font-size:0.75rem;color:#888;margin-top:2rem;">
+    We collect a photograph of your government-issued photo ID and your electronic signature solely to verify local pickup of orders and to prevent fraud. These records are retained for 3 years from the pickup date.
+  </p>
+
+  <script>
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    function resize() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = 180;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function pos(e) {
+      const r = canvas.getBoundingClientRect();
+      const t = e.touches ? e.touches[0] : e;
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
+    }
+    canvas.addEventListener('pointerdown', e => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+    canvas.addEventListener('pointermove', e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); });
+    canvas.addEventListener('pointerup', () => drawing = false);
+    canvas.addEventListener('pointerleave', () => drawing = false);
+
+    function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    function go(n) {
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
+        document.getElementById('p' + i).classList.toggle('active', i <= n);
+      }
+    }
+
+    function previewId(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const img = document.getElementById('id-preview');
+      img.src = URL.createObjectURL(file);
+      img.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
