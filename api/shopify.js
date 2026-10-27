@@ -1,6 +1,4 @@
-// Shopify client-credentials token helper
-// Gets a short-lived Admin API access token
-
+// Shopify client-credentials + GraphQL helper
 export async function getShopifyAccessToken() {
   const shop = process.env.SHOPIFY_STORE;
   const clientId = process.env.SHOPIFY_API_KEY;
@@ -25,6 +23,28 @@ export async function getShopifyAccessToken() {
   return data.access_token;
 }
 
+export async function shopifyGraphql(query, variables = {}) {
+  const token = await getShopifyAccessToken();
+  const shop = process.env.SHOPIFY_STORE;
+
+  const res = await fetch(`https://${shop}/admin/api/2026-10/graphql.json`, {
+    method: 'POST',
+    headers: {
+      'X-Shopify-Access-Token': token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ query, variables })
+  });
+
+  const json = await res.json();
+
+  if (json.errors) {
+    throw new Error('GraphQL errors: ' + JSON.stringify(json.errors));
+  }
+  return json.data;
+}
+
+// Keep REST helper for non-protected endpoints
 export async function shopifyAdminFetch(path, options = {}) {
   const token = await getShopifyAccessToken();
   const shop = process.env.SHOPIFY_STORE;
