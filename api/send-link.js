@@ -1,6 +1,4 @@
-// Basic token + Aircall SMS stub
-// Replace with full Shopify Admin API integration next
-
+// Fixed Aircall native send endpoint
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -8,20 +6,26 @@ export default async function handler(req, res) {
 
   const { orderId, phone, name } = req.body || {};
 
-  // TODO: generate real cryptographically secure token bound to order
+  // Normalize phone to E.164
+  let to = phone.trim();
+  if (!to.startsWith('+')) {
+    to = '+1' + to.replace(/\D/g, '');
+  }
+
   const token = `test-${Date.now()}`;
   const link = `https://pickup.plumbingmarket.ca/?token=${token}`;
 
-  // Aircall send (uses env vars already set in Vercel)
-  const aircallRes = await fetch('https://api.aircall.io/v1/messages/native/send', {
+  const numberId = process.env.AIRCALL_NUMBER_ID;
+  const url = `https://api.aircall.io/v1/numbers/${numberId}/messages/native/send`;
+
+  const aircallRes = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': 'Basic ' + Buffer.from(`${process.env.AIRCALL_API_ID}:${process.env.AIRCALL_API_TOKEN}`).toString('base64'),
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      number_id: parseInt(process.env.AIRCALL_NUMBER_ID),
-      to: phone,
+      to,
       body: `Plumbing Market: Your order is ready for pickup. Sign here: ${link}`
     })
   });
@@ -29,9 +33,11 @@ export default async function handler(req, res) {
   const aircallData = await aircallRes.json().catch(() => ({}));
 
   return res.status(200).json({
-    ok: true,
+    ok: aircallRes.ok,
     token,
     link,
-    aircall: aircallData
+    to,
+    aircall: aircallData,
+    status: aircallRes.status
   });
 }
