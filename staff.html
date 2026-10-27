@@ -7,22 +7,41 @@
   <style>
     body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 1rem; }
     input, button { width: 100%; padding: 0.75rem; margin: 0.4rem 0; font-size: 1rem; }
-    button { background: #0a5; color: white; border: none; border-radius: 8px; }
+    button { background: #0a5; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    button.secondary { background: #444; }
     #result { margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 8px; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h1>Send Pickup Link</h1>
-  <p>Staff tool — sends an Aircall SMS with a signing link.</p>
+  <h1>Staff Tools</h1>
 
-  <label>Order ID<br><input id="orderId" value="TEST-1001"></label>
+  <h2>1. Create Test Order</h2>
+  <button class="secondary" onclick="createOrder()">Create Test Local Pickup Order</button>
+
+  <h2>2. Send Pickup Link</h2>
+  <label>Order ID / Name<br><input id="orderId" value="TEST-1001"></label>
   <label>Customer phone<br><input id="phone" placeholder="+1289..."></label>
   <label>Name<br><input id="name" value="Alex Rivera"></label>
-
   <button onclick="send()">Send SMS Link</button>
+
   <div id="result"></div>
 
   <script>
+    async function createOrder() {
+      const result = document.getElementById('result');
+      result.textContent = 'Creating order…';
+      try {
+        const res = await fetch('/api/create-test-order', { method: 'POST' });
+        const data = await res.json();
+        result.textContent = JSON.stringify(data, null, 2);
+        if (data.order_name) {
+          document.getElementById('orderId').value = data.order_name;
+        }
+      } catch (err) {
+        result.textContent = 'Error: ' + err.message;
+      }
+    }
+
     async function send() {
       const result = document.getElementById('result');
       result.textContent = 'Sending…';
