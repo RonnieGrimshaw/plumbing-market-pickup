@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff — Send Pickup Link</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 2rem auto; padding: 1rem; }
+    input, button { width: 100%; padding: 0.75rem; margin: 0.4rem 0; font-size: 1rem; }
+    button { background: #0a5; color: white; border: none; border-radius: 8px; }
+    #result { margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 8px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Send Pickup Link</h1>
+  <p>Staff tool — sends an Aircall SMS with a signing link.</p>
+
+  <label>Order ID<br><input id="orderId" value="TEST-1001"></label>
+  <label>Customer phone<br><input id="phone" placeholder="+1289..."></label>
+  <label>Name<br><input id="name" value="Alex Rivera"></label>
+
+  <button onclick="send()">Send SMS Link</button>
+  <div id="result"></div>
+
+  <script>
+    async function send() {
+      const result = document.getElementById('result');
+      result.textContent = 'Sending…';
+
+      const body = {
+        orderId: document.getElementById('orderId').value,
+        phone: document.getElementById('phone').value,
+        name: document.getElementById('name').value
+      };
+
+      try {
+        const res = await fetch('/api/send-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        result.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        result.textContent = 'Error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
