@@ -14,7 +14,7 @@
     .card { background: white; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
     button, .btn { display: block; width: 100%; padding: 0.9rem; font-size: 1.1rem; border: none; border-radius: 8px; background: #0a5; color: white; margin-top: 0.75rem; cursor: pointer; }
     button.secondary { background: #eee; color: #333; }
-    #signature-pad { border: 1px solid #ccc; border-radius: 8px; width: 100%; height: 180px; background: #fff; touch-action: none; }
+    #signature-pad { border: 2px solid #aaa; border-radius: 8px; width: 100%; height: 180px; background: #fff; cursor: crosshair; touch-action: none; }
     .preview { max-width: 100%; border-radius: 8px; margin-top: 0.5rem; }
     .items { font-size: 0.95rem; }
     .items li { margin: 0.3rem 0; }
@@ -32,7 +32,6 @@
     <div class="step" id="p4"></div>
   </div>
 
-  <!-- Step 1: Confirm -->
   <div id="step1" class="card">
     <h2>Confirm</h2>
     <p><strong>Items</strong> (visible before signing)</p>
@@ -49,7 +48,6 @@
     <button onclick="go(2)">Continue</button>
   </div>
 
-  <!-- Step 2: Consent + Sign -->
   <div id="step2" class="card" style="display:none;">
     <h2>Consent & Sign</h2>
     <p style="font-size:0.9rem;background:#f0f0f0;padding:0.75rem;border-radius:6px;">
@@ -64,17 +62,15 @@
     <button onclick="acceptSign()">Accept & Continue</button>
   </div>
 
-  <!-- Step 3: ID Photo -->
   <div id="step3" class="card" style="display:none;">
     <h2>Photo ID</h2>
     <p>Take a clear photo of the front of your driver’s licence, passport, or Ontario Photo Card.</p>
-    <input type="file" accept="image/*" capture="environment" id="id-input" onchange="previewId(this)" required>
+    <input type="file" accept="image/*" capture="environment" id="id-input" onchange="previewId(this)">
     <img id="id-preview" class="preview" style="display:none;">
     <div id="id-error" class="error" style="display:none;">Photo ID is required.</div>
     <button id="submit-btn" onclick="submitPickup()">Submit</button>
   </div>
 
-  <!-- Step 4: Success -->
   <div id="step4" class="card" style="display:none;">
     <h2>Pickup Verified</h2>
     <p>Thank you. Your digital pickup receipt has been recorded.</p>
@@ -91,46 +87,51 @@
       const rect = canvas.getBoundingClientRect();
       canvas.width = rect.width;
       canvas.height = 180;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
-      ctx.strokeStyle = '#000';
+      ctx.strokeStyle = '#111';
     }
+    window.addEventListener('load', resize);
     window.addEventListener('resize', resize);
-    resize();
 
-    function pos(e) {
+    function getPos(e) {
       const r = canvas.getBoundingClientRect();
-      const t = e.touches ? e.touches[0] : e;
-      return { x: t.clientX - r.left, y: t.clientY - r.top };
+      const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+      const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+      return { x: clientX - r.left, y: clientY - r.top };
     }
 
-    function start(e) {
+    function startDraw(e) {
       e.preventDefault();
       drawing = true;
       hasSigned = true;
-      const p = pos(e);
+      const p = getPos(e);
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
     }
-    function move(e) {
+    function draw(e) {
       if (!drawing) return;
       e.preventDefault();
-      const p = pos(e);
+      const p = getPos(e);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
     }
-    function end(e) {
+    function stopDraw(e) {
       if (drawing) e.preventDefault();
       drawing = false;
     }
 
-    canvas.addEventListener('pointerdown', start);
-    canvas.addEventListener('pointermove', move);
-    canvas.addEventListener('pointerup', end);
-    canvas.addEventListener('pointerleave', end);
-    canvas.addEventListener('touchstart', start, { passive: false });
-    canvas.addEventListener('touchmove', move, { passive: false });
-    canvas.addEventListener('touchend', end);
+    // Mouse + pointer + touch
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+    canvas.addEventListener('pointerdown', startDraw);
+    canvas.addEventListener('pointermove', draw);
+    canvas.addEventListener('pointerup', stopDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDraw);
 
     function clearSig() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -142,6 +143,7 @@
         document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
         document.getElementById('p' + i).classList.toggle('active', i <= n);
       }
+      if (n === 2) setTimeout(resize, 50);
     }
 
     function acceptSign() {
@@ -177,8 +179,7 @@
       const role = document.getElementById('role').value;
       const signature = canvas.toDataURL('image/png');
 
-      let idPhoto = null;
-      idPhoto = await new Promise(resolve => {
+      const idPhoto = await new Promise(resolve => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.readAsDataURL(idInput.files[0]);
@@ -195,9 +196,15 @@
         });
         const data = await res.json();
         console.log('Submit response:', data);
+        if (!data.ok) {
+          alert('Server error: ' + (data.error || 'Unknown'));
+          btn.disabled = false;
+          btn.textContent = 'Submit';
+          return;
+        }
         go(4);
       } catch (err) {
-        alert('Submission failed. Please try again.');
+        alert('Submission failed: ' + err.message);
         btn.disabled = false;
         btn.textContent = 'Submit';
       }
