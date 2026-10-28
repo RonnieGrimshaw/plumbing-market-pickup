@@ -1,1 +1,114 @@
-UPDATED
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff Tools — Plumbing Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; min-height: 100vh; }
+    .header { background: white; border-bottom: 1px solid #eee; padding: 0.5rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+    .header-right { font-size: 0.8rem; color: #666; text-align: right; }
+    .container { max-width: 420px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .big-btn { display: block; width: 100%; padding: 1.4rem 1rem; font-size: 1.15rem; font-weight: 600; border: none; border-radius: 16px; background: white; color: #1a1a1a; margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: left; cursor: pointer; }
+    .big-btn strong { display: block; font-size: 1.2rem; }
+    .big-btn span { font-size: 0.85rem; color: #666; font-weight: 400; }
+    .card { background: white; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    label { display: block; font-size: 0.85rem; font-weight: 500; margin-top: 0.6rem; }
+    input[type="text"], input[type="file"], select { width: 100%; padding: 0.75rem; border: 1.5px solid #ddd; border-radius: 10px; font-size: 1.05rem; margin-top: 0.3rem; }
+    button.primary { display: block; width: 100%; padding: 1rem; font-size: 1.05rem; font-weight: 600; border: none; border-radius: 12px; background: #c41e3a; color: white; margin-top: 1rem; cursor: pointer; }
+    button.back { background: #f0f0f0; border: 1px solid #ddd; color: #333; font-size: 1rem; font-weight: 500; padding: 0.6rem 1rem; cursor: pointer; margin-bottom: 0.75rem; border-radius: 8px; display: inline-block; }
+    #result, #photoResult { margin-top: 1rem; padding: 0.8rem; background: #f0f0f0; border-radius: 10px; font-size: 0.8rem; white-space: pre-wrap; }
+    .photo-preview { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
+    .photo-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
+    .footer-note { text-align: center; font-size: 0.75rem; color: #999; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="https://cdn.shopify.com/s/files/1/0654/5827/4526/files/Plumbing_Market_header_logo_1200_1.png?v=1793153912" alt="Plumbing Market" style="height:90px;width:auto;cursor:pointer;" onclick="window.location.href='/staff.html'">
+    <div class="header-right">Staff<br>Tools</div>
+  </div>
+  <div class="container">
+    <div id="home" class="screen active">
+      <h1>Staff Tools</h1>
+      <div class="subtitle">What do you want to do?</div>
+      <button class="big-btn" onclick="show('start')"><strong>Start Pickup</strong><span>Hand the device to the customer</span></button>
+      <button class="big-btn" onclick="show('send')"><strong>Send Link to Customer</strong><span>Text or email the signing page</span></button>
+    </div>
+    <div id="start" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card">
+        <h2>Start Pickup</h2>
+        <p style="color:#555;font-size:0.9rem;">Enter your name and the order number, then hand the device to the customer.</p>
+        <label>Your name<br><input id="staffName" type="text" placeholder="e.g. Sarah"></label>
+        <label>Order number<br><input id="startOrder" type="text" placeholder="1001"></label>
+        <label>Staff notes (optional)<br><input id="staffNotes" type="text" placeholder="e.g. Customer said box was open"></label>
+        <button class="primary" onclick="startPickup()">Start Pickup</button>
+      </div>
+    </div>
+    <div id="send" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card" id="send-step1">
+        <h2>Send Link</h2>
+        <p style="color:#555;font-size:0.9rem;">Enter the order number to load the customer’s details.</p>
+        <label>Order number<br><input id="orderId" type="text" placeholder="1001"></label>
+        <button class="primary" onclick="beginSend()">Begin Pickup</button>
+      </div>
+      <div class="card" id="send-step2" style="display:none;">
+        <h2>Confirm Contact</h2>
+        <p style="color:#555;font-size:0.9rem;">Details loaded from the order. Edit if someone else is picking up.</p>
+        <label>Name<div style="display:flex;gap:0.4rem;align-items:center;"><input id="name" type="text" style="flex:1;"><button type="button" onclick="document.getElementById('name').focus()" style="width:auto;padding:0.5rem 0.8rem;margin:0;background:#eee;color:#333;font-size:0.8rem;">Edit</button></div></label>
+        <label>Email<div style="display:flex;gap:0.4rem;align-items:center;"><input id="email" type="text" style="flex:1;"><button type="button" onclick="document.getElementById('email').focus()" style="width:auto;padding:0.5rem 0.8rem;margin:0;background:#eee;color:#333;font-size:0.8rem;">Edit</button></div></label>
+        <label>Phone<div style="display:flex;gap:0.4rem;align-items:center;"><input id="phone" type="text" style="flex:1;"><button type="button" onclick="document.getElementById('phone').focus()" style="width:auto;padding:0.5rem 0.8rem;margin:0;background:#eee;color:#333;font-size:0.8rem;">Edit</button></div></label>
+        <label>Method<select id="method"><option value="email">Email</option><option value="sms">Text (SMS)</option></select></label>
+        <button class="primary" onclick="send()">Send Link</button>
+        <button class="back" style="display:block;width:100%;text-align:center;" onclick="document.getElementById('send-step1').style.display='block';document.getElementById('send-step2').style.display='none';">← Change Order</button>
+        <div id="result"></div>
+      </div>
+    </div>
+    <div id="photos" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card">
+        <h2>Take Product Photos</h2>
+        <p style="color:#555;font-size:0.9rem;">Select or take at least 3 photos of the items. You can choose multiple at once.</p>
+        <label>Order number<br><input id="photoOrder" type="text" placeholder="1001"></label>
+        <input type="file" id="photoInput" accept="image/*" multiple onchange="previewPhotos(this)">
+        <div id="photoPreviews" class="photo-preview"></div>
+        <div id="photoCount" style="font-size:0.85rem;color:#666;margin:0.4rem 0;"></div>
+        <button class="primary" onclick="uploadPhotos()">Send Photos & Certificate</button>
+        <button class="back" style="display:block;width:100%;text-align:center;margin-top:0.5rem;" onclick="goBackToReceipt()">← Back to Receipt</button>
+        <div id="photoResult"></div>
+      </div>
+    </div>
+    <div class="footer-note">Plumbing Market · Vaughan, ON</div>
+  </div>
+  <script>
+    function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    window.addEventListener('load', () => {
+      const saved = localStorage.getItem('staffName');
+      if (saved) document.getElementById('staffName').value = saved;
+      document.getElementById('staffName').addEventListener('input', (e) => localStorage.setItem('staffName', e.target.value.trim()));
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('photos') === '1') {
+        const order = params.get('order') || sessionStorage.getItem('photoOrder') || '';
+        if (order) document.getElementById('photoOrder').value = order;
+        show('photos');
+      }
+    });
+    function startPickup() { const order = document.getElementById('startOrder').value.trim(); const staff = document.getElementById('staffName').value.trim(); const notes = document.getElementById('staffNotes').value.trim(); if (!order) { alert('Enter the order number'); return; } if (!staff) { alert('Enter your name'); return; } localStorage.setItem('staffName', staff); window.location.href = `/?token=${encodeURIComponent(order)}&staff=${encodeURIComponent(staff)}&notes=${encodeURIComponent(notes)}`; }
+    async function beginSend() { const orderId = document.getElementById('orderId').value.trim(); if (!orderId) { alert('Enter the order number'); return; } try { const res = await fetch(`/api/order-details?token=${encodeURIComponent(orderId)}`); const data = await res.json(); if (data.ok) { document.getElementById('email').value = data.email || ''; document.getElementById('phone').value = data.phone || ''; document.getElementById('name').value = data.customer_name || ''; } } catch {} document.getElementById('send-step1').style.display = 'none'; document.getElementById('send-step2').style.display = 'block'; }
+    async function send() { const result = document.getElementById('result'); result.textContent = 'Sending…'; const body = { orderId: document.getElementById('orderId').value, phone: document.getElementById('phone').value, email: document.getElementById('email').value, name: document.getElementById('name').value, method: document.getElementById('method').value }; try { const res = await fetch('/api/send-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); result.textContent = data.ok ? 'Link sent!' : JSON.stringify(data, null, 2); if (data.ok) { const order = document.getElementById('orderId').value.trim(); window.location.href = `/wait.html?order=${encodeURIComponent(order)}`; } } catch (err) { result.textContent = 'Error: ' + err.message; } }
+    let selectedPhotos = [];
+    function previewPhotos(input) { selectedPhotos = Array.from(input.files); const container = document.getElementById('photoPreviews'); container.innerHTML = ''; selectedPhotos.forEach(file => { const img = document.createElement('img'); img.src = URL.createObjectURL(file); container.appendChild(img); }); const count = selectedPhotos.length; document.getElementById('photoCount').textContent = count + ' photo' + (count === 1 ? '' : 's') + ' selected' + (count < 3 ? ' (need at least 3)' : ''); sessionStorage.setItem('photoOrder', document.getElementById('photoOrder').value); }
+    function goBackToReceipt() { const order = document.getElementById('photoOrder').value.trim(); if (order) window.location.href = `/?token=${encodeURIComponent(order)}&staff=${encodeURIComponent(localStorage.getItem('staffName') || '')}`; else show('home'); }
+    async function uploadPhotos() { const result = document.getElementById('photoResult'); const files = selectedPhotos.length ? selectedPhotos : document.getElementById('photoInput').files; if (!files.length || files.length < 3) { result.textContent = 'Please select at least 3 photos.'; return; } result.textContent = 'Uploading…'; const photos = []; for (const file of files) { const dataUrl = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); }); photos.push({ name: file.name, data: dataUrl }); } try { const res = await fetch('/api/staff-photos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: document.getElementById('photoOrder').value, photos }) }); const data = await res.json(); if (data.ok) { result.innerHTML = '<strong style="color:#1a7f37;font-size:1.1rem;">✓ Pickup Complete</strong><br>Product photos submitted and certificate emailed.<br><span style="color:#666;">Returning to home…</span>'; setTimeout(() => { window.location.href = '/staff.html'; }, 3000); } else { result.textContent = JSON.stringify(data, null, 2); } } catch (err) { result.textContent = 'Error: ' + err.message; } }
+  </script>
+</body>
+</html>
