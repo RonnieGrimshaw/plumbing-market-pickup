@@ -22,15 +22,15 @@ export default async function handler(req, res) {
           }
         ],
         shipping_address: {
-          first_name: 'Test',
-          last_name: 'Customer',
+          first_name: req.body?.firstName || 'Klein',
+          last_name: req.body?.lastName || 'Customer',
           address1: '131 Whitmore Rd',
           city: 'Vaughan',
           province: 'Ontario',
           country: 'Canada',
           zip: 'L4L 6E3'
         },
-        email: 'test@plumbingmarket.ca',
+        email: req.body?.email || 'klein@plumbingmarket.ca',
         financial_status: 'paid',
         fulfillment_status: null,
         note: 'TEST ORDER — Local pickup verification',
