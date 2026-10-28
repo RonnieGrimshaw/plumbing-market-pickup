@@ -24,14 +24,6 @@ export default async function handler(req, res) {
             node {
               id
               name
-              email
-              phone
-              customer {
-                email
-                phone
-                firstName
-                lastName
-              }
               lineItems(first: 50) {
                 edges {
                   node {
@@ -112,9 +104,6 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       order_name: order.name,
-      email: order.email || order.customer?.email || null,
-      phone: order.phone || order.customer?.phone || null,
-      customer_name: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : null,
       items: readyItems
     });
   } catch (err) {
