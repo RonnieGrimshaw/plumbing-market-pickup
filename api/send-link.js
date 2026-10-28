@@ -58,6 +58,10 @@ export default async function handler(req, res) {
       }
 
       const numberId = process.env.AIRCALL_NUMBER_ID;
+      if (!numberId || !process.env.AIRCALL_API_ID || !process.env.AIRCALL_API_TOKEN) {
+        return res.status(500).json({ ok: false, error: 'Aircall credentials not configured in Vercel' });
+      }
+
       const url = `https://api.aircall.io/v1/numbers/${numberId}/messages/native/send`;
 
       const aircallRes = await fetch(url, {
@@ -71,14 +75,24 @@ export default async function handler(req, res) {
 
       const aircallData = await aircallRes.json().catch(() => ({}));
 
+      if (!aircallRes.ok) {
+        const detail = aircallData.message || aircallData.error || JSON.stringify(aircallData).slice(0, 200);
+        return res.status(200).json({
+          ok: false,
+          method: 'sms',
+          to,
+          error: `Aircall ${aircallRes.status}: ${detail}`,
+          aircall: aircallData
+        });
+      }
+
       return res.status(200).json({
-        ok: aircallRes.ok,
+        ok: true,
         method: 'sms',
         token,
         link,
         to,
-        aircall: aircallData,
-        status: aircallRes.status
+        aircall: aircallData
       });
     }
   } catch (err) {
