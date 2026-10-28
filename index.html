@@ -1,1 +1,286 @@
-UPDATED
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Pickup Receipt — Plumbing Market</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, sans-serif; }
+    body { margin: 0; padding: 1rem; background: #f4f6f8; color: #1a1a1a; max-width: 520px; margin: 0 auto; }
+    h1 { font-size: 1.45rem; margin-bottom: 0.2rem; color: #0a5; }
+    .progress { display: flex; gap: 0.4rem; margin: 1rem 0; }
+    .step { flex: 1; height: 5px; background: #ddd; border-radius: 3px; }
+    .step.active { background: #0a5; }
+    .card { background: white; border-radius: 14px; padding: 1.1rem; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+    button { display: block; width: 100%; padding: 0.9rem; font-size: 1.05rem; border: none; border-radius: 8px; background: #0a5; color: white; margin-top: 0.8rem; cursor: pointer; font-weight: 600; }
+    button.secondary { background: #eee; color: #333; }
+    button:disabled { opacity: 0.6; }
+    .item { display: flex; gap: 0.8rem; padding: 0.8rem 0; border-bottom: 1px solid #eee; align-items: flex-start; }
+    .item:last-child { border-bottom: none; }
+    .item img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; background: #f0f0f0; }
+    .item-info { flex: 1; font-size: 0.92rem; }
+    .item-info strong { display: block; }
+    .sku { color: #666; font-size: 0.8rem; }
+    .initial-box { width: 80px; text-align: center; }
+    .initial-input { width: 70px; padding: 0.35rem; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-size: 1rem; text-transform: uppercase; }
+    .initial-label { font-size: 0.7rem; color: #555; margin-top: 2px; }
+    #signature-pad { border: 2px solid #aaa; border-radius: 8px; width: 100%; height: 160px; background: #fff; cursor: crosshair; touch-action: none; }
+    .error { color: #c00; font-size: 0.85rem; margin-top: 0.4rem; }
+    .loading { text-align: center; padding: 2rem; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Digital Pickup Receipt</h1>
+  <p>Order <strong id="order-num">Loading…</strong></p>
+
+  <div class="progress">
+    <div class="step active" id="p1"></div>
+    <div class="step" id="p2"></div>
+    <div class="step" id="p3"></div>
+    <div class="step" id="p4"></div>
+  </div>
+
+  <div id="loading" class="loading">Loading order items…</div>
+
+  <div id="step1" class="card" style="display:none;">
+    <h2>Confirm Items Ready for Pickup</h2>
+    <p style="font-size:0.9rem;color:#555;">Please initial next to each item to confirm you are picking it up.</p>
+    <div id="items-list"></div>
+    <div id="items-error" class="error" style="display:none;">Please initial every item before continuing.</div>
+    <label style="display:block;margin-top:1rem;">Person picking up<br>
+      <input id="pickup-name" value="Alex Rivera" style="width:100%;padding:0.5rem;margin-top:0.3rem;border:1px solid #ccc;border-radius:6px;">
+    </label>
+    <label style="display:block;margin-top:0.6rem;">Role<br>
+      <select id="role" style="width:100%;padding:0.5rem;border:1px solid #ccc;border-radius:6px;">
+        <option>Self</option><option>Employee</option><option>Contractor</option><option>Family</option>
+      </select>
+    </label>
+    <button onclick="acceptItems()">Continue</button>
+  </div>
+
+  <div id="step2" class="card" style="display:none;">
+    <h2>Consent & Signature</h2>
+    <p style="font-size:0.88rem;background:#f7f7f7;padding:0.75rem;border-radius:6px;line-height:1.4;">
+      I confirm that I am the person named above (or an authorized representative).<br>
+      I have received the items I initialed above in good condition.<br>
+      Once handed over, these items become my responsibility.<br>
+      <strong>I have read and agree to the return policy:</strong> 
+      <a href="https://www.plumbingmarket.ca/policies/refund-policy" target="_blank">https://www.plumbingmarket.ca/policies/refund-policy</a><br>
+      I agree to sign this digital pickup receipt electronically.
+    </p>
+    <canvas id="signature-pad"></canvas>
+    <button class="secondary" onclick="clearSig()">Clear / Redo</button>
+    <div id="sig-error" class="error" style="display:none;">Please sign above before continuing.</div>
+    <button onclick="acceptSign()">Accept & Continue</button>
+  </div>
+
+  <div id="step3" class="card" style="display:none;">
+    <h2>Photo ID</h2>
+    <p>Take a clear photo of the front of your driver’s licence, passport, or Ontario Photo Card.</p>
+    <input type="file" accept="image/*" capture="environment" id="id-input" onchange="previewId(this)">
+    <img id="id-preview" style="max-width:100%;border-radius:8px;margin-top:0.5rem;display:none;">
+    <div id="id-error" class="error" style="display:none;">Photo ID is required.</div>
+    <button id="submit-btn" onclick="submitPickup()">Submit</button>
+  </div>
+
+  <div id="step4" class="card" style="display:none;">
+    <h2>Pickup Verified</h2>
+    <p>Thank you. Your digital pickup receipt has been recorded.</p>
+    <p>A certificate has been emailed to the store.</p>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') || 'test-1001';
+    let orderItems = [];
+    let initials = {};
+
+    async function loadOrder() {
+      try {
+        const res = await fetch(`/api/order-details?token=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Failed to load order');
+        document.getElementById('order-num').textContent = data.order_name;
+        orderItems = data.items || [];
+        renderItems();
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('step1').style.display = 'block';
+      } catch (err) {
+        document.getElementById('loading').textContent = 'Could not load order: ' + err.message;
+      }
+    }
+
+    function renderItems() {
+      const container = document.getElementById('items-list');
+      container.innerHTML = '';
+      orderItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          ${item.image ? `<img src="${item.image}" alt="">` : '<div style="width:64px;height:64px;background:#eee;border-radius:6px;"></div>'}
+          <div class="item-info">
+            <strong>${item.title || item.name}</strong>
+            ${item.variantTitle ? `<div>${item.variantTitle}</div>` : ''}
+            <div class="sku">${item.sku || 'No SKU'} · Qty ${item.quantity}</div>
+          </div>
+          <div class="initial-box">
+            <input type="text" class="initial-input" data-id="${item.id}" maxlength="4" placeholder="AB" autocomplete="off">
+            <div class="initial-label">Type initials</div>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+      document.querySelectorAll('.initial-input').forEach(input => {
+        input.addEventListener('focus', () => {
+          if (!input.value.trim()) {
+            const name = document.getElementById('pickup-name').value.trim();
+            const parts = name.split(/\s+/).filter(Boolean);
+            let init = '';
+            if (parts.length >= 2) {
+              init = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+            } else if (parts.length === 1) {
+              init = parts[0].slice(0, 2).toUpperCase();
+            }
+            if (init) input.value = init;
+          }
+        });
+        input.addEventListener('input', () => {
+          input.dataset.manual = '1';
+        });
+      });
+      updateInitialsFromName();
+    }
+
+    function updateInitialsFromName() {
+      const name = document.getElementById('pickup-name').value.trim();
+      const parts = name.split(/\s+/).filter(Boolean);
+      let initials = '';
+      if (parts.length >= 2) {
+        initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      } else if (parts.length === 1) {
+        initials = parts[0].slice(0, 2).toUpperCase();
+      }
+      document.querySelectorAll('.initial-input').forEach(input => {
+        if (!input.dataset.manual) input.value = initials;
+      });
+    }
+
+    document.getElementById('pickup-name').addEventListener('input', updateInitialsFromName);
+
+    function acceptItems() {
+      const inputs = document.querySelectorAll('.initial-input');
+      let missing = false;
+      initials = {};
+      inputs.forEach(input => {
+        const val = input.value.trim().toUpperCase();
+        if (!val) missing = true;
+        else initials[input.dataset.id] = val;
+      });
+      if (missing) {
+        document.getElementById('items-error').style.display = 'block';
+        return;
+      }
+      document.getElementById('items-error').style.display = 'none';
+      go(2);
+    }
+
+    const sigCanvas = document.getElementById('signature-pad');
+    const sigCtx = sigCanvas.getContext('2d');
+    let sigDrawing = false;
+    let hasSigned = false;
+    function resizeSig() {
+      const r = sigCanvas.getBoundingClientRect();
+      sigCanvas.width = r.width;
+      sigCanvas.height = 160;
+      sigCtx.lineWidth = 2.5;
+      sigCtx.lineCap = 'round';
+      sigCtx.strokeStyle = '#111';
+    }
+    window.addEventListener('load', () => { resizeSig(); loadOrder(); });
+    window.addEventListener('resize', resizeSig);
+    function sigPos(e) {
+      const r = sigCanvas.getBoundingClientRect();
+      const t = e.touches ? e.touches[0] : e;
+      return { x: t.clientX - r.left, y: t.clientY - r.top };
+    }
+    function sigStart(e) { e.preventDefault(); sigDrawing = true; hasSigned = true; const p = sigPos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x, p.y); }
+    function sigMove(e) { if (!sigDrawing) return; e.preventDefault(); const p = sigPos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); }
+    function sigEnd(e) { if (sigDrawing) e.preventDefault(); sigDrawing = false; }
+    sigCanvas.addEventListener('mousedown', sigStart);
+    sigCanvas.addEventListener('mousemove', sigMove);
+    sigCanvas.addEventListener('mouseup', sigEnd);
+    sigCanvas.addEventListener('mouseleave', sigEnd);
+    sigCanvas.addEventListener('touchstart', sigStart, { passive: false });
+    sigCanvas.addEventListener('touchmove', sigMove, { passive: false });
+    sigCanvas.addEventListener('touchend', sigEnd);
+    function clearSig() { sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height); hasSigned = false; }
+
+    function go(n) {
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById('step' + i).style.display = i === n ? 'block' : 'none';
+        document.getElementById('p' + i).classList.toggle('active', i <= n);
+      }
+      if (n === 2) setTimeout(resizeSig, 50);
+    }
+
+    function acceptSign() {
+      if (!hasSigned) { document.getElementById('sig-error').style.display = 'block'; return; }
+      document.getElementById('sig-error').style.display = 'none';
+      go(3);
+    }
+
+    function previewId(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const img = document.getElementById('id-preview');
+      img.src = URL.createObjectURL(file);
+      img.style.display = 'block';
+      document.getElementById('id-error').style.display = 'none';
+    }
+
+    async function submitPickup() {
+      const idInput = document.getElementById('id-input');
+      if (!idInput.files[0]) { document.getElementById('id-error').style.display = 'block'; return; }
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+
+      const name = document.getElementById('pickup-name').value;
+      const role = document.getElementById('role').value;
+      const signature = sigCanvas.toDataURL('image/png');
+
+      const idPhoto = await new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(idInput.files[0]);
+      });
+
+      const itemInitials = orderItems.map(item => ({
+        id: item.id,
+        name: item.name,
+        title: item.title,
+        sku: item.sku,
+        quantity: item.quantity,
+        image: item.image,
+        initial: initials[item.id]
+      }));
+
+      try {
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, name, role, signature, idPhoto, items: itemInitials })
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || JSON.stringify(data));
+        go(4);
+      } catch (err) {
+        alert('Submission failed: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+      }
+    }
+  </script>
+</body>
+</html>
