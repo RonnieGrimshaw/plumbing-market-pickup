@@ -1,4 +1,4 @@
-// Submit using GraphQL (avoids protected customer data REST block)
+// Submit — stores signature + ID in metafields and writes a clear note
 import { shopifyGraphql } from './shopify.js';
 
 export default async function handler(req, res) {
@@ -6,14 +6,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { token, name, role } = req.body || {};
+  const { token, name, role, signature, idPhoto } = req.body || {};
 
   if (!token || !name) {
     return res.status(400).json({ error: 'Missing token or name' });
   }
 
   try {
-    // Derive order name
     let orderName = token;
     if (token.startsWith('test-')) {
       orderName = '#' + token.replace('test-', '');
@@ -21,7 +20,6 @@ export default async function handler(req, res) {
       orderName = '#' + token;
     }
 
-    // Find order by name
     const findQuery = `
       query FindOrder($query: String!) {
         orders(first: 1, query: $query) {
@@ -43,23 +41,62 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Order not found', looked_for: orderName });
     }
 
-    const note = `Pickup verified — signed by ${name} (${role || 'self'}) on ${new Date().toISOString()}.`;
-    const newNote = order.note ? `${order.note}\n${note}` : note;
+    // Store signature and ID as multi-line text metafields (data URLs)
+    const metafields = [];
+    if (signature) {
+      metafields.push({
+        ownerId: order.id,
+        namespace: 'pickup',
+        key: 'signature',
+        type: 'multi_line_text_field',
+        value: signature
+      });
+    }
+    if (idPhoto) {
+      metafields.push({
+        ownerId: order.id,
+        namespace: 'pickup',
+        key: 'id_photo',
+        type: 'multi_line_text_field',
+        value: idPhoto
+      });
+    }
+    metafields.push({
+      ownerId: order.id,
+      namespace: 'pickup',
+      key: 'signer_name',
+      type: 'single_line_text_field',
+      value: name
+    });
+    metafields.push({
+      ownerId: order.id,
+      namespace: 'pickup',
+      key: 'signer_role',
+      type: 'single_line_text_field',
+      value: role || 'self'
+    });
 
-    // Update note + add tag via orderUpdate
+    if (metafields.length) {
+      const mfMutation = `
+        mutation MetafieldsSet($metafields: [MetafieldsSetInput!]!) {
+          metafieldsSet(metafields: $metafields) {
+            metafields { id key }
+            userErrors { field message }
+          }
+        }
+      `;
+      await shopifyGraphql(mfMutation, { metafields });
+    }
+
+    // Note that creates a timeline entry
+    const noteLine = `PICKUP VERIFIED — Signed by ${name} (${role || 'self'}) on ${new Date().toLocaleString()}. Signature and ID photo stored in order metafields (pickup.signature, pickup.id_photo).`;
+    const newNote = order.note ? `${order.note}\n${noteLine}` : noteLine;
+
     const updateMutation = `
       mutation OrderUpdate($input: OrderInput!) {
         orderUpdate(input: $input) {
-          order {
-            id
-            name
-            note
-            tags
-          }
-          userErrors {
-            field
-            message
-          }
+          order { id name note tags }
+          userErrors { field message }
         }
       }
     `;
@@ -68,22 +105,18 @@ export default async function handler(req, res) {
       input: {
         id: order.id,
         note: newNote,
-        tags: [...(order.tags || []), 'pickup-verified']
+        tags: [...new Set([...(order.tags || []), 'pickup-verified'])]
       }
     });
 
     if (updateData.orderUpdate.userErrors?.length) {
-      return res.status(400).json({
-        ok: false,
-        userErrors: updateData.orderUpdate.userErrors
-      });
+      return res.status(400).json({ ok: false, userErrors: updateData.orderUpdate.userErrors });
     }
 
     return res.status(200).json({
       ok: true,
-      order_id: order.id,
       order_name: order.name,
-      message: 'Pickup verified and recorded on the order.'
+      message: 'Pickup verified. Signature and ID stored in metafields; note added.'
     });
   } catch (err) {
     console.error(err);
