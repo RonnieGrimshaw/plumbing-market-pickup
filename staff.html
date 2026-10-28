@@ -64,9 +64,10 @@
       </div>
       <div class="card" id="send-step2" style="display:none;">
         <h2>Confirm Contact</h2>
-        <label>Name<div style="display:flex;gap:0.4rem;align-items:center;"><input id="name" type="text" style="flex:1;"><button type="button" onclick="toggleEdit('name')" style="width:auto;padding:0.5rem 0.8rem;margin:0;background:#eee;color:#333;font-size:0.8rem;">Edit</button></div></label>
-        <label>Email<div style="display:flex;gap:0.4rem;align-items:center;"><input id="email" type="text" style="flex:1;"><button type="button" onclick="toggleEdit('email')" style="width:auto;padding:0.5rem 0.8rem;margin:0;background:#eee;color:#333;font-size:0.8rem;">Edit</button></div></label>
-        <label>Phone<div style="display:flex;gap:0.4rem;align-items:center;"><input id="phone" type="text" style="flex:1;"><button type="button" onclick="toggleEdit('phone')" style="width:auto;padding:0.5rem 0.8rem;margin:0;background:#eee;color:#333;font-size:0.8rem;">Edit</button></div></label>
+        <p style="color:#555;font-size:0.9rem;">Details loaded from the order. Edit if someone else is picking up.</p>
+        <label>Name<br><input id="name" type="text"></label>
+        <label>Email<br><input id="email" type="text"></label>
+        <label>Phone<br><input id="phone" type="text"></label>
         <label>Method<select id="method"><option value="email">Email</option><option value="sms">Text (SMS)</option></select></label>
         <button class="primary" onclick="send()">Send Link</button>
         <div id="result"></div>
@@ -92,7 +93,6 @@
     function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
     if (params.get('photos') === '1') { const order = params.get('order') || ''; if (order) document.getElementById('photoOrder').value = order; show('photos'); }
     function startPickup() { const name = document.getElementById('staffName').value.trim(); const order = document.getElementById('startOrder').value.trim(); const notes = document.getElementById('staffNotes').value.trim(); if (!name || !order) { alert('Enter your name and the order number'); return; } localStorage.setItem('staffName', name); window.location.href = `/?token=${encodeURIComponent(order)}&staff=${encodeURIComponent(name)}&notes=${encodeURIComponent(notes)}&mode=staff`; }
-    function toggleEdit(id) { const el = document.getElementById(id); el.focus(); }
     async function beginSend() { const order = document.getElementById('orderId').value.trim(); if (!order) { alert('Enter an order number'); return; } try { const res = await fetch(`/api/order-details?token=${encodeURIComponent(order)}`); const data = await res.json(); if (!data.ok) throw new Error(data.error || 'Could not load order'); document.getElementById('name').value = data.customer?.name || ''; document.getElementById('email').value = data.customer?.email || ''; document.getElementById('phone').value = data.customer?.phone || ''; document.getElementById('send-step1').style.display = 'none'; document.getElementById('send-step2').style.display = 'block'; } catch (err) { alert(err.message); } }
     async function send() { const order = document.getElementById('orderId').value.trim(); const method = document.getElementById('method').value; const email = document.getElementById('email').value.trim(); const phone = document.getElementById('phone').value.trim(); const result = document.getElementById('result'); result.textContent = 'Sending…'; try { const res = await fetch('/api/send-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: order, method, email, phone }) }); const data = await res.json(); if (!data.ok) throw new Error(data.error || 'Failed'); result.innerHTML = '<strong style="color:#1a7f37;">Link sent!</strong>'; setTimeout(() => { window.location.href = '/wait.html?order=' + encodeURIComponent(order); }, 2000); } catch (err) { result.textContent = 'Error: ' + err.message; } }
     let selectedPhotos = [];
