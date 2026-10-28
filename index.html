@@ -21,8 +21,8 @@
     .item-info { flex: 1; font-size: 0.92rem; }
     .item-info strong { display: block; }
     .sku { color: #666; font-size: 0.8rem; }
-    .initial-box { width: 90px; text-align: center; }
-    .initial-canvas { border: 1px solid #ccc; border-radius: 6px; width: 80px; height: 50px; background: #fff; cursor: crosshair; touch-action: none; }
+    .initial-box { width: 80px; text-align: center; }
+    .initial-input { width: 70px; padding: 0.35rem; border: 1px solid #ccc; border-radius: 6px; text-align: center; font-size: 1rem; text-transform: uppercase; }
     .initial-label { font-size: 0.7rem; color: #555; margin-top: 2px; }
     #signature-pad { border: 2px solid #aaa; border-radius: 8px; width: 100%; height: 160px; background: #fff; cursor: crosshair; touch-action: none; }
     .error { color: #c00; font-size: 0.85rem; margin-top: 0.4rem; }
@@ -122,47 +122,60 @@
             <div class="sku">${item.sku || 'No SKU'} · Qty ${item.quantity}</div>
           </div>
           <div class="initial-box">
-            <canvas class="initial-canvas" data-id="${item.id}"></canvas>
-            <div class="initial-label">Initial here</div>
+            <input type="text" class="initial-input" data-id="${item.id}" maxlength="4" placeholder="AB" autocomplete="off">
+            <div class="initial-label">Type initials</div>
           </div>
         `;
         container.appendChild(div);
-        setupInitialCanvas(div.querySelector('canvas'));
+      });
+      // Wire up autofill on focus/click
+      document.querySelectorAll('.initial-input').forEach(input => {
+        input.addEventListener('focus', () => {
+          if (!input.value.trim()) {
+            const name = document.getElementById('pickup-name').value.trim();
+            const parts = name.split(/\s+/).filter(Boolean);
+            let init = '';
+            if (parts.length >= 2) {
+              init = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+            } else if (parts.length === 1) {
+              init = parts[0].slice(0, 2).toUpperCase();
+            }
+            if (init) input.value = init;
+          }
+        });
+        input.addEventListener('input', () => {
+          input.dataset.manual = '1';
+        });
+      });
+      // Auto-fill all on load / name change
+      updateInitialsFromName();
+    }
+
+    function updateInitialsFromName() {
+      const name = document.getElementById('pickup-name').value.trim();
+      const parts = name.split(/\s+/).filter(Boolean);
+      let initials = '';
+      if (parts.length >= 2) {
+        initials = (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      } else if (parts.length === 1) {
+        initials = parts[0].slice(0, 2).toUpperCase();
+      }
+      document.querySelectorAll('.initial-input').forEach(input => {
+        if (!input.dataset.manual) input.value = initials;
       });
     }
 
-    function setupInitialCanvas(canvas) {
-      const ctx = canvas.getContext('2d');
-      const id = canvas.dataset.id;
-      let drawing = false;
-      function resize() {
-        const r = canvas.getBoundingClientRect();
-        canvas.width = r.width;
-        canvas.height = 50;
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#111';
-      }
-      resize();
-      function pos(e) {
-        const r = canvas.getBoundingClientRect();
-        const t = e.touches ? e.touches[0] : e;
-        return { x: t.clientX - r.left, y: t.clientY - r.top };
-      }
-      function start(e) { e.preventDefault(); drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
-      function move(e) { if (!drawing) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
-      function end(e) { if (drawing) { e.preventDefault(); initials[id] = canvas.toDataURL('image/png'); } drawing = false; }
-      canvas.addEventListener('mousedown', start);
-      canvas.addEventListener('mousemove', move);
-      canvas.addEventListener('mouseup', end);
-      canvas.addEventListener('mouseleave', end);
-      canvas.addEventListener('touchstart', start, { passive: false });
-      canvas.addEventListener('touchmove', move, { passive: false });
-      canvas.addEventListener('touchend', end);
-    }
+    document.getElementById('pickup-name').addEventListener('input', updateInitialsFromName);
 
     function acceptItems() {
-      const missing = orderItems.some(item => !initials[item.id]);
+      const inputs = document.querySelectorAll('.initial-input');
+      let missing = false;
+      initials = {};
+      inputs.forEach(input => {
+        const val = input.value.trim().toUpperCase();
+        if (!val) missing = true;
+        else initials[input.dataset.id] = val;
+      });
       if (missing) {
         document.getElementById('items-error').style.display = 'block';
         return;
@@ -171,6 +184,7 @@
       go(2);
     }
 
+    // Main signature pad
     const sigCanvas = document.getElementById('signature-pad');
     const sigCtx = sigCanvas.getContext('2d');
     let sigDrawing = false;
