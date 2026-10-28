@@ -1,3 +1,15 @@
 {
-  "cleanUrls": true
+  "version": 2,
+  "builds": [
+    { "src": "*.html", "use": "@vercel/static" },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/staff", "dest": "/staff.html" },
+    { "src": "/staff.html", "dest": "/staff.html" },
+    { "src": "/wait", "dest": "/wait.html" },
+    { "src": "/wait.html", "dest": "/wait.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
