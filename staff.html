@@ -11,137 +11,88 @@
     body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; min-height: 100vh; }
     .header { background: white; border-bottom: 1px solid #eee; padding: 0.5rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
     .header-right { font-size: 0.8rem; color: #666; text-align: right; }
-    .container { max-width: 520px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
-    h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; }
-    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .container { max-width: 420px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .big-btn { display: block; width: 100%; padding: 1.4rem 1rem; font-size: 1.15rem; font-weight: 600; border: none; border-radius: 16px; background: white; color: #1a1a1a; margin-bottom: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.08); text-align: left; cursor: pointer; }
+    .big-btn:hover { background: #fafafa; }
+    .big-btn strong { display: block; font-size: 1.2rem; }
+    .big-btn span { font-size: 0.85rem; color: #666; font-weight: 400; }
     .card { background: white; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-    .card h2 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.5rem; }
-    .card p { font-size: 0.85rem; color: #555; margin: 0.4rem 0 0.75rem; }
     label { display: block; font-size: 0.85rem; font-weight: 500; margin-top: 0.6rem; }
-    input[type="text"], input[type="file"], select { width: 100%; padding: 0.65rem; border: 1.5px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 0.3rem; }
+    input[type="text"], input[type="file"], select { width: 100%; padding: 0.75rem; border: 1.5px solid #ddd; border-radius: 10px; font-size: 1.05rem; margin-top: 0.3rem; }
     input:focus, select:focus { outline: none; border-color: #c41e3a; }
-    button { display: block; width: 100%; padding: 0.9rem; font-size: 1rem; font-weight: 600; border: none; border-radius: 10px; background: #c41e3a; color: white; margin-top: 0.9rem; cursor: pointer; }
-    button:hover { background: #a01830; }
-    button.secondary { background: #444; }
-    button.secondary:hover { background: #333; }
-    #result { margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 10px; white-space: pre-wrap; font-size: 0.8rem; font-family: ui-monospace, monospace; }
+    button.primary { display: block; width: 100%; padding: 1rem; font-size: 1.05rem; font-weight: 600; border: none; border-radius: 12px; background: #c41e3a; color: white; margin-top: 1rem; cursor: pointer; }
+    button.primary:hover { background: #a01830; }
+    button.back { background: none; border: none; color: #666; font-size: 0.9rem; padding: 0.5rem 0; cursor: pointer; margin-bottom: 0.5rem; }
+    #result, #photoResult { margin-top: 1rem; padding: 0.8rem; background: #f0f0f0; border-radius: 10px; font-size: 0.8rem; white-space: pre-wrap; }
     .photo-preview { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
     .photo-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
-    .footer-note { text-align: center; font-size: 0.75rem; color: #999; margin-top: 1.5rem; }
+    .footer-note { text-align: center; font-size: 0.75rem; color: #999; margin-top: 2rem; }
   </style>
 </head>
 <body>
   <div class="header">
-    <img src="https://cdn.shopify.com/s/files/1/0654/5827/4526/files/Plumbing_Market_header_logo_1200_1.png?v=1793153912" alt="Plumbing Market" style="height:110px;width:auto;">
+    <img src="https://cdn.shopify.com/s/files/1/0654/5827/4526/files/Plumbing_Market_header_logo_1200_1.png?v=1793153912" alt="Plumbing Market" style="height:90px;width:auto;">
     <div class="header-right">Staff<br>Tools</div>
   </div>
   <div class="container">
-    <h1>Staff Tools</h1>
-    <div class="subtitle">Pickup verification</div>
-    <div class="card">
-      <h2>Staff Member</h2>
-      <label>Your name (saved on this device)<br><input id="staffName" type="text" placeholder="e.g. Sarah"></label>
+    <div id="home" class="screen active">
+      <h1>Staff Tools</h1>
+      <div class="subtitle">What do you want to do?</div>
+      <button class="big-btn" onclick="show('start')"><strong>Start Pickup</strong><span>Hand the device to the customer</span></button>
+      <button class="big-btn" onclick="show('send')"><strong>Send Link to Customer</strong><span>Text or email the signing page</span></button>
+      <button class="big-btn" onclick="show('photos')"><strong>Upload Product Photos</strong><span>Take 3 photos of the items</span></button>
     </div>
-    <div class="card">
-      <h2>1. Start Pickup</h2>
-      <p>Enter the order number, then hand the device to the customer.</p>
-      <label>Order number<br><input id="startOrder" value="1001" type="text"></label>
-      <label>Staff notes (optional — appears on certificate)
-        <input id="staffNotes" type="text" placeholder="e.g. Customer said box was open">
-      </label>
-      <button onclick="startPickup()">Start Pickup</button>
+    <div id="start" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card">
+        <h2>Start Pickup</h2>
+        <p style="color:#555;font-size:0.9rem;">Enter your name and the order number, then hand the device to the customer.</p>
+        <label>Your name<br><input id="staffName" type="text" placeholder="e.g. Sarah"></label>
+        <label>Order number<br><input id="startOrder" type="text" placeholder="1001"></label>
+        <label>Staff notes (optional)<br><input id="staffNotes" type="text" placeholder="e.g. Customer said box was open"></label>
+        <button class="primary" onclick="startPickup()">Start Pickup</button>
+      </div>
     </div>
-    <div class="card">
-      <h2>2. Send Link to Customer’s Device</h2>
-      <label>Order ID / Name<br><input id="orderId" value="TEST-1001" type="text" onchange="loadOrderContact()"></label>
-      <label>Method
-        <select id="method" onchange="toggleContactFields()">
-          <option value="sms">Text (SMS)</option>
-          <option value="email">Email</option>
-        </select>
-      </label>
-      <div id="phone-field"><label>Customer phone<br><input id="phone" placeholder="+1289..." type="text"></label></div>
-      <div id="email-field" style="display:none;"><label>Customer email<br><input id="email" placeholder="customer@email.com" type="text"></label></div>
-      <label>Name<br><input id="name" value="Alex Rivera" type="text"></label>
-      <button onclick="send()">Send Link</button>
+    <div id="send" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card">
+        <h2>Send Link</h2>
+        <label>Order number<br><input id="orderId" type="text" placeholder="1001" onchange="loadOrderContact()"></label>
+        <label>Method <select id="method" onchange="toggleContactFields()"><option value="sms">Text (SMS)</option><option value="email">Email</option></select></label>
+        <div id="phone-field"><label>Customer phone<br><input id="phone" type="text" placeholder="+1289..."></label></div>
+        <div id="email-field" style="display:none;"><label>Customer email<br><input id="email" type="text" placeholder="customer@email.com"></label></div>
+        <label>Customer name<br><input id="name" type="text" placeholder="Alex Rivera"></label>
+        <button class="primary" onclick="send()">Send Link</button>
+        <div id="result"></div>
+      </div>
     </div>
-    <div class="card">
-      <h2>3. Upload Product Photos <span style="color:#c41e3a;font-weight:500;">(3 required)</span></h2>
-      <p>Take at least 3 photos of the items being handed to the customer.</p>
-      <label>Order<br><input id="photoOrder" value="TEST-1001" type="text"></label>
-      <input type="file" id="photoInput" accept="image/*" capture="environment" multiple onchange="previewPhotos(this)">
-      <div id="photoPreviews" class="photo-preview"></div>
-      <button onclick="uploadPhotos()">Send Product Photos</button>
+    <div id="photos" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card">
+        <h2>Upload Product Photos</h2>
+        <p style="color:#555;font-size:0.9rem;">Take at least 3 photos of the items being handed over.</p>
+        <label>Order number<br><input id="photoOrder" type="text" placeholder="1001"></label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" multiple onchange="previewPhotos(this)">
+        <div id="photoPreviews" class="photo-preview"></div>
+        <button class="primary" onclick="uploadPhotos()">Send Photos</button>
+        <div id="photoResult"></div>
+      </div>
     </div>
-    <div id="result"></div>
-    <div class="footer-note">Plumbing Market · Vaughan, ON<br>Internal staff tools</div>
+    <div class="footer-note">Plumbing Market · Vaughan, ON</div>
   </div>
   <script>
-    window.addEventListener('load', () => {
-      toggleContactFields();
-      const saved = localStorage.getItem('staffName');
-      if (saved) document.getElementById('staffName').value = saved;
-      document.getElementById('staffName').addEventListener('input', (e) => localStorage.setItem('staffName', e.target.value.trim()));
-      loadOrderContact();
-    });
-    function startPickup() {
-      const order = document.getElementById('startOrder').value.trim();
-      const staff = document.getElementById('staffName').value.trim();
-      const notes = document.getElementById('staffNotes').value.trim();
-      if (!order) { alert('Enter an order number'); return; }
-      if (!staff) { alert('Enter your name first'); return; }
-      localStorage.setItem('staffName', staff);
-      window.location.href = `/?token=${encodeURIComponent(order)}&staff=${encodeURIComponent(staff)}&notes=${encodeURIComponent(notes)}`;
-    }
-    async function loadOrderContact() {
-      const orderId = document.getElementById('orderId').value.trim();
-      if (!orderId) return;
-      try {
-        const res = await fetch(`/api/order-details?token=${encodeURIComponent(orderId)}`);
-        const data = await res.json();
-        if (data.ok) {
-          if (data.email) document.getElementById('email').value = data.email;
-          if (data.phone) document.getElementById('phone').value = data.phone;
-          if (data.customer_name) document.getElementById('name').value = data.customer_name;
-        }
-      } catch {}
-    }
-    function toggleContactFields() {
-      const method = document.getElementById('method').value;
-      document.getElementById('phone-field').style.display = method === 'sms' ? 'block' : 'none';
-      document.getElementById('email-field').style.display = method === 'email' ? 'block' : 'none';
-    }
-    async function send() {
-      const result = document.getElementById('result');
-      result.textContent = 'Sending…';
-      const body = { orderId: document.getElementById('orderId').value, phone: document.getElementById('phone').value, email: document.getElementById('email').value, name: document.getElementById('name').value, method: document.getElementById('method').value };
-      try {
-        const res = await fetch('/api/send-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-        const data = await res.json();
-        result.textContent = JSON.stringify(data, null, 2);
-      } catch (err) { result.textContent = 'Error: ' + err.message; }
-    }
-    function previewPhotos(input) {
-      const container = document.getElementById('photoPreviews');
-      container.innerHTML = '';
-      Array.from(input.files).forEach(file => { const img = document.createElement('img'); img.src = URL.createObjectURL(file); container.appendChild(img); });
-    }
-    async function uploadPhotos() {
-      const result = document.getElementById('result');
-      const files = document.getElementById('photoInput').files;
-      if (!files.length || files.length < 3) { result.textContent = 'Please take at least 3 product photos.'; return; }
-      result.textContent = 'Uploading photos…';
-      const photos = [];
-      for (const file of files) {
-        const dataUrl = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
-        photos.push({ name: file.name, data: dataUrl });
-      }
-      try {
-        const res = await fetch('/api/staff-photos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: document.getElementById('photoOrder').value, photos }) });
-        const data = await res.json();
-        result.textContent = JSON.stringify(data, null, 2);
-      } catch (err) { result.textContent = 'Error: ' + err.message; }
-    }
+    function show(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+    window.addEventListener('load', () => { const saved = localStorage.getItem('staffName'); if (saved) document.getElementById('staffName').value = saved; document.getElementById('staffName').addEventListener('input', (e) => localStorage.setItem('staffName', e.target.value.trim())); toggleContactFields(); });
+    function startPickup() { const order = document.getElementById('startOrder').value.trim(); const staff = document.getElementById('staffName').value.trim(); const notes = document.getElementById('staffNotes').value.trim(); if (!order) { alert('Enter the order number'); return; } if (!staff) { alert('Enter your name'); return; } localStorage.setItem('staffName', staff); window.location.href = `/?token=${encodeURIComponent(order)}&staff=${encodeURIComponent(staff)}&notes=${encodeURIComponent(notes)}`; }
+    function toggleContactFields() { const method = document.getElementById('method').value; document.getElementById('phone-field').style.display = method === 'sms' ? 'block' : 'none'; document.getElementById('email-field').style.display = method === 'email' ? 'block' : 'none'; }
+    async function loadOrderContact() { const orderId = document.getElementById('orderId').value.trim(); if (!orderId) return; try { const res = await fetch(`/api/order-details?token=${encodeURIComponent(orderId)}`); const data = await res.json(); if (data.ok) { if (data.email) document.getElementById('email').value = data.email; if (data.phone) document.getElementById('phone').value = data.phone; if (data.customer_name) document.getElementById('name').value = data.customer_name; } } catch {} }
+    async function send() { const result = document.getElementById('result'); result.textContent = 'Sending…'; const body = { orderId: document.getElementById('orderId').value, phone: document.getElementById('phone').value, email: document.getElementById('email').value, name: document.getElementById('name').value, method: document.getElementById('method').value }; try { const res = await fetch('/api/send-link', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const data = await res.json(); result.textContent = data.ok ? 'Link sent!' : JSON.stringify(data, null, 2); } catch (err) { result.textContent = 'Error: ' + err.message; } }
+    function previewPhotos(input) { const container = document.getElementById('photoPreviews'); container.innerHTML = ''; Array.from(input.files).forEach(file => { const img = document.createElement('img'); img.src = URL.createObjectURL(file); container.appendChild(img); }); }
+    async function uploadPhotos() { const result = document.getElementById('photoResult'); const files = document.getElementById('photoInput').files; if (!files.length || files.length < 3) { result.textContent = 'Please take at least 3 photos.'; return; } result.textContent = 'Uploading…'; const photos = []; for (const file of files) { const dataUrl = await new Promise(resolve => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); }); photos.push({ name: file.name, data: dataUrl }); } try { const res = await fetch('/api/staff-photos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId: document.getElementById('photoOrder').value, photos }) }); const data = await res.json(); result.textContent = data.ok ? 'Photos sent!' : JSON.stringify(data, null, 2); } catch (err) { result.textContent = 'Error: ' + err.message; } }
   </script>
 </body>
 </html>
