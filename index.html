@@ -279,7 +279,7 @@
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'Failed to load order');
         document.getElementById('order-num').textContent = data.order_name;
-        document.getElementById('confirm-order-number').value = (data.order_name || '').replace('#', '');
+        document.getElementById('confirm-order-number').value = (data.order_name || token || '').replace('#', '');
         orderItems = data.items || [];
         renderItems();
         document.getElementById('loading').style.display = 'none';
@@ -387,8 +387,6 @@
       loadOrder();
       const savedName = sessionStorage.getItem('pickupName');
       if (savedName) document.getElementById('pickup-name').value = savedName;
-      const savedNum = sessionStorage.getItem('confirmOrder');
-      if (savedNum) document.getElementById('confirm-order-number').value = savedNum;
     });
     document.getElementById('pickup-name').addEventListener('input', (e) => sessionStorage.setItem('pickupName', e.target.value));
     document.getElementById('confirm-order-number').addEventListener('input', (e) => sessionStorage.setItem('confirmOrder', e.target.value));
@@ -424,6 +422,8 @@
       go(3);
     }
 
+    let compressedId = null;
+
     function previewId(input) {
       const file = input.files[0];
       if (!file) return;
@@ -431,9 +431,11 @@
       img.src = URL.createObjectURL(file);
       img.style.display = 'block';
       document.getElementById('id-error').style.display = 'none';
+      compressedId = null;
+      compressImage(file, 240).then(dataUrl => { compressedId = dataUrl; }).catch(() => {});
     }
 
-    function compressImage(file, maxWidth = 400) {
+    function compressImage(file, maxWidth = 240) {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => {
@@ -445,7 +447,7 @@
           ctx.fillStyle = '#fff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/png');
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
           if (!dataUrl || dataUrl.length < 100) {
             reject(new Error('Could not process ID photo. Try a different photo.'));
             return;
