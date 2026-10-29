@@ -180,7 +180,11 @@
       <div class="step" id="p4"></div>
     </div>
 
-    <div id="loading" class="loading">Loading your order…</div>
+    <div id="browser-banner" style="display:none;background:#fff3cd;border:1px solid #f0d58c;border-radius:10px;padding:0.8rem;margin-bottom:1rem;font-size:0.9rem;">
+      <strong>Open in your browser</strong><br>
+      This page does not work inside the email app.<br>
+      <span id="browser-steps"></span>
+    </div>
 
     <div id="step1" class="card" style="display:none;">
       <h2>Confirm Items</h2>
@@ -391,8 +395,19 @@
       resizeSig();
       loadOrder();
       const ua = navigator.userAgent || '';
-      const inApp = /FBAN|FBAV|Instagram|Outlook|Gmail|Yahoo|LinkedIn/i.test(ua) || (ua.includes('Safari') && !ua.includes('Chrome'));
-      if (inApp || /Edg\//.test(ua)) document.getElementById('browser-hint').style.display = 'block';
+      const inEmailApp = /Outlook|Hotmail|iCloud|Mail\/|Yahoo|Gmail|FBAN|FBAV|Instagram/i.test(ua)
+        || (/iPhone|iPad/.test(ua) && !/Safari/.test(ua))
+        || (/Android/.test(ua) && /; wv\)/.test(ua));
+      if (inEmailApp) {
+        const banner = document.getElementById('browser-banner');
+        const steps = document.getElementById('browser-steps');
+        if (/iPhone|iPad/.test(ua)) {
+          steps.textContent = 'Tap the share icon, then Open in Safari.';
+        } else {
+          steps.textContent = 'Tap the menu (⋯), then Open in browser.';
+        }
+        banner.style.display = 'block';
+      }
       const savedName = sessionStorage.getItem('pickupName');
       if (savedName) document.getElementById('pickup-name').value = savedName;
     });
