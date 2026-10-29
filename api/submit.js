@@ -20,33 +20,32 @@ export default async function handler(req, res) {
     let orderName = token.replace(/[^0-9#]/g, '');
     if (!orderName.startsWith('#')) orderName = '#' + orderName;
 
-    const query = `
-      query GetOrder($query: String!) {
+    const findQuery = `
+      query FindOrder($query: String!) {
         orders(first: 1, query: $query) {
           edges {
-            node {
-              id
-              name
-              note
-              tags
-            }
+            node { id name note tags }
           }
         }
       }
     `;
-    const data = await shopifyGraphql(query, { query: `name:${orderName}` });
-    const order = data.orders.edges[0]?.node;
+    const findData = await shopifyGraphql(findQuery, { query: `name:${orderName}` });
+    const order = findData.orders.edges[0]?.node;
+
     if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+      return res.status(404).json({ error: 'Order not found', looked_for: orderName });
     }
 
     const timestamp = new Date().toISOString();
     const displayTime = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' });
     const evidenceHash = crypto.createHash('sha256').update(`${order.name}|${name}|${timestamp}`).digest('hex');
 
+    // Store evidence for the PDF certificate
     const evidence = {
       name,
       role: role || 'Self',
+      signature: signature || null,
+      idPhoto: idPhoto || null,
       items: items || [],
       staff: staff || null,
       staffNotes: staffNotes || null,
@@ -67,13 +66,25 @@ export default async function handler(req, res) {
       }
     `;
 
-    const metafields = [{
-      ownerId: order.id,
-      namespace: 'pickup',
-      key: 'evidence',
-      type: 'json',
-      value: JSON.stringify(evidence)
-    }];
+    // Store evidence — keep ID photo separate so it doesn't get truncated
+    const evidenceForStore = { ...evidence };
+    delete evidenceForStore.idPhoto;
+    // Keep a copy of the signature in the evidence JSON as well as the separate metafield
+    if (signature && signature.startsWith('data:image') && signature.length < 60000) {
+      evidenceForStore.signature = signature;
+    } else {
+      delete evidenceForStore.signature;
+    }
+
+    const metafields = [
+      {
+        ownerId: order.id,
+        namespace: 'pickup',
+        key: 'evidence',
+        type: 'json',
+        value: JSON.stringify(evidenceForStore)
+      }
+    ];
 
     if (signature && signature.startsWith('data:image')) {
       metafields.push({
@@ -86,6 +97,7 @@ export default async function handler(req, res) {
     }
 
     if (idPhoto && idPhoto.startsWith('data:image')) {
+      // Keep existing metafield storage
       metafields.push({
         ownerId: order.id,
         namespace: 'pickup',
@@ -94,6 +106,7 @@ export default async function handler(req, res) {
         value: idPhoto
       });
 
+      // Also upload as a Shopify file so the PDF can load a clean image
       try {
         const fileUrl = await uploadIdToShopify(idPhoto, order.name);
         if (fileUrl) {
@@ -116,6 +129,7 @@ export default async function handler(req, res) {
       console.error('Metafield errors:', JSON.stringify(metaErrors));
     }
 
+    // Order note
     let noteLine = `\n\nPICKUP VERIFIED\nSigned by: ${name} (${role || 'self'})\nTime: ${displayTime}`;
     if (confirmOrderName) noteLine += `\nConfirmed order name: ${confirmOrderName}`;
     if (authorizedBy) noteLine += `\nAuthorized by: ${authorizedBy} (${authMethod || ''})`;
@@ -146,7 +160,6 @@ export default async function handler(req, res) {
       ok: true,
       order_name: order.name,
       evidence_hash: evidenceHash,
-      id_saved: !!(idPhoto && idPhoto.startsWith('data:image')),
       message: 'Pickup verified. Evidence stored.'
     });
   } catch (err) {
