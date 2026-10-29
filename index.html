@@ -180,13 +180,7 @@
       <div class="step" id="p4"></div>
     </div>
 
-    <div id="browser-banner" style="display:none;background:#fff3cd;border:1px solid #f0d58c;border-radius:10px;padding:0.8rem;margin-bottom:1rem;font-size:0.9rem;">
-      <strong>Open in your browser</strong><br>
-      This page does not work inside the email app.<br>
-      <span id="browser-steps"></span>
-    </div>
-
-    <div id="step1" class="card" style="display:none;">
+<div id="step1" class="card" style="display:none;">
       <h2>Confirm Items</h2>
       <p>Initial each item to confirm you are picking it up.</p>
       <div id="items-list"></div>
@@ -247,7 +241,6 @@
       <p>Take a clear photo of the front of your driver’s licence, passport, or Ontario Photo Card.</p>
       <p>Take a photo now, or choose one from your photos.</p>
       <input type="file" accept="image/*" id="id-input" onchange="previewId(this)" style="margin-top:0.5rem;font-size:16px;">
-      <p id="browser-hint" style="display:none;color:#a01830;font-size:0.85rem;margin-top:0.5rem;">If the photo will not submit, open this page in Safari or Chrome (tap the share icon, then Open in Browser).</p>
       <img id="id-preview" style="max-width:100%;border-radius:10px;margin-top:0.75rem;display:none;">
       <div id="id-error" class="error" style="display:none;">Photo ID is required.</div>
       <button id="submit-btn" onclick="submitPickup()">Submit Receipt</button>
@@ -291,10 +284,10 @@
         }
         orderItems = data.items || [];
         renderItems();
-        document.getElementById('loading').style.display = 'none';
         document.getElementById('step1').style.display = 'block';
       } catch (err) {
-        document.getElementById('loading').textContent = 'Could not load order: ' + err.message;
+        document.getElementById('order-num').textContent = 'Error';
+        document.getElementById('order-num').insertAdjacentHTML('afterend', '<div class="error" style="display:block;margin-top:0.5rem;">Could not load order: ' + err.message + '</div>');
       }
     }
 
@@ -394,20 +387,6 @@
     window.addEventListener('load', () => {
       resizeSig();
       loadOrder();
-      const ua = navigator.userAgent || '';
-      const inEmailApp = /Outlook|Hotmail|iCloud|Mail\/|Yahoo|Gmail|FBAN|FBAV|Instagram/i.test(ua)
-        || (/iPhone|iPad/.test(ua) && !/Safari/.test(ua))
-        || (/Android/.test(ua) && /; wv\)/.test(ua));
-      if (inEmailApp) {
-        const banner = document.getElementById('browser-banner');
-        const steps = document.getElementById('browser-steps');
-        if (/iPhone|iPad/.test(ua)) {
-          steps.textContent = 'Tap the share icon, then Open in Safari.';
-        } else {
-          steps.textContent = 'Tap the menu (⋯), then Open in browser.';
-        }
-        banner.style.display = 'block';
-      }
       const savedName = sessionStorage.getItem('pickupName');
       if (savedName) document.getElementById('pickup-name').value = savedName;
     });
@@ -460,7 +439,6 @@
       compressImage(file, 140).then(dataUrl => { compressedId = dataUrl; }).catch(err => {
         document.getElementById('id-error').textContent = err.message || 'Could not read this photo.';
         document.getElementById('id-error').style.display = 'block';
-        document.getElementById('browser-hint').style.display = 'block';
       });
     }
 
