@@ -42,10 +42,23 @@ export default async function handler(req, res) {
     if (order?.metafield?.value) {
       try { evidence = JSON.parse(order.metafield.value); } catch {}
     }
-    // Prefer separate metafields for signature and ID
     if (order?.signature?.value) evidence.signature = order.signature.value;
     if (order?.idPhoto?.value) evidence.idPhoto = order.idPhoto.value;
     if (order?.idPhotoUrl?.value) evidence.idPhotoUrl = order.idPhotoUrl.value;
+
+    // If evidence has no real items, pull them from the order
+    if (!evidence.items || evidence.items.length === 0 || evidence.items[0]?.title === 'Test') {
+      try {
+        const detailsRes = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://pickup.plumbingmarket.ca'}/api/order-details?token=${encodeURIComponent(orderName.replace('#',''))}`);
+        const details = await detailsRes.json();
+        if (details.ok && details.items?.length) {
+          evidence.items = details.items.map(it => ({
+            ...it,
+            initial: (evidence.items || []).find(e => e.id === it.id)?.initial || '—'
+          }));
+        }
+      } catch {}
+    }
 
     // Generate PDF
     const pdfBytes = await generateCertificate({
