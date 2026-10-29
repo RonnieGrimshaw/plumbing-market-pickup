@@ -192,9 +192,9 @@
         <input id="pickup-name" type="text" placeholder="Full name of person here">
       </label>
       <label>Confirm the order number
-        <input id="confirm-order-number" type="text" placeholder="e.g. 1001">
+        <input id="confirm-order-number" type="text" readonly style="background:#f7f7f8;">
       </label>
-      <div id="name-error" class="error" style="display:none;">Person picking up and order number are required.</div>
+      <div id="name-error" class="error" style="display:none;">Person picking up is required.</div>
 
       <label>Role
         <select id="role" onchange="toggleThirdParty()">
@@ -279,6 +279,7 @@
         const data = await res.json();
         if (!data.ok) throw new Error(data.error || 'Failed to load order');
         document.getElementById('order-num').textContent = data.order_name;
+        document.getElementById('confirm-order-number').value = (data.order_name || '').replace('#', '');
         orderItems = data.items || [];
         renderItems();
         document.getElementById('loading').style.display = 'none';
@@ -359,7 +360,7 @@
 
       const confirmNumber = document.getElementById('confirm-order-number').value.trim();
       const pickupName = document.getElementById('pickup-name').value.trim();
-      if (!confirmNumber || !pickupName) {
+      if (!pickupName) {
         document.getElementById('name-error').style.display = 'block';
         return;
       }
@@ -489,7 +490,7 @@
       const authMethod = document.getElementById('auth-method')?.value || '';
       const signature = compressSignature(sigCanvas);
 
-      const idPhoto = await compressImage(idInput.files[0]);
+      const idPhoto = compressedId || await compressImage(idInput.files[0], 280);
 
       const itemInitials = orderItems.map(item => ({
         id: item.id,
