@@ -241,7 +241,7 @@
     <div id="step3" class="card" style="display:none;">
       <h2>Photo ID</h2>
       <p>Take a clear photo of the front of your driver’s licence, passport, or Ontario Photo Card.</p>
-      <input type="file" accept="image/*" id="id-input" onchange="previewId(this)" style="margin-top:0.5rem;">
+      <input type="file" accept="image/*" capture="environment" id="id-input" onchange="previewId(this)" style="margin-top:0.5rem;">
       <img id="id-preview" style="max-width:100%;border-radius:10px;margin-top:0.75rem;display:none;">
       <div id="id-error" class="error" style="display:none;">Photo ID is required.</div>
       <button id="submit-btn" onclick="submitPickup()">Submit Receipt</button>
@@ -482,7 +482,7 @@
 
     async function submitPickup() {
       const idInput = document.getElementById('id-input');
-      if (!idInput.files[0]) { document.getElementById('id-error').style.display = 'block'; return; }
+      if (!idInput.files[0] && !compressedId) { document.getElementById('id-error').style.display = 'block'; return; }
 
       const btn = document.getElementById('submit-btn');
       btn.disabled = true;
@@ -495,7 +495,16 @@
       const authMethod = document.getElementById('auth-method')?.value || '';
       const signature = compressSignature(sigCanvas);
 
-      const idPhoto = compressedId || await compressImage(idInput.files[0], 280);
+      let idPhoto = compressedId;
+      if (!idPhoto && idInput.files[0]) {
+        try { idPhoto = await compressImage(idInput.files[0], 240); }
+        catch (e) {
+          alert('Could not read the ID photo. Please take a new photo with the camera.');
+          btn.disabled = false;
+          btn.textContent = 'Submit Receipt';
+          return;
+        }
+      }
 
       const itemInitials = orderItems.map(item => ({
         id: item.id,
