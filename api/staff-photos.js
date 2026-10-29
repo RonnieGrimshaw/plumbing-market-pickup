@@ -14,6 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Find order + evidence metafield
     let orderName = orderId.replace(/[^0-9#]/g, '');
     if (!orderName.startsWith('#')) orderName = '#' + orderName;
 
@@ -40,16 +41,19 @@ export default async function handler(req, res) {
     if (order?.metafield?.value) {
       try { evidence = JSON.parse(order.metafield.value); } catch {}
     }
+    // Prefer separate metafields for signature and ID
     if (order?.signature?.value) evidence.signature = order.signature.value;
     if (order?.idPhoto?.value) evidence.idPhoto = order.idPhoto.value;
     if (order?.idPhotoUrl?.value) evidence.idPhotoUrl = order.idPhotoUrl.value;
 
+    // Generate PDF
     const pdfBytes = await generateCertificate({
       orderName: order?.name || orderName,
       evidence,
       photos
     });
 
+    // Build attachments: PDF + all product photos + ID photo
     const user = process.env.SMTP_USER || 'info@plumbingmarket.ca';
     const pass = (process.env.SMTP_PASS || 'qyap gctt ggrd llxd').replace(/\s+/g, '');
 
@@ -64,6 +68,7 @@ export default async function handler(req, res) {
       contentType: 'application/pdf'
     }];
 
+    // Product photos as separate attachments
     photos.forEach((p, i) => {
       if (!p.data || !p.data.includes(',')) return;
       const base64 = p.data.split(',')[1];
@@ -76,6 +81,7 @@ export default async function handler(req, res) {
       });
     });
 
+    // ID photo as attachment
     if (evidence.idPhoto && evidence.idPhoto.includes(',')) {
       const base64 = evidence.idPhoto.split(',')[1];
       const mime = evidence.idPhoto.match(/data:(image\/\w+)/)?.[1] || 'image/jpeg';
@@ -87,6 +93,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // Signature as attachment
     if (evidence.signature && evidence.signature.includes(',')) {
       const base64 = evidence.signature.split(',')[1];
       attachments.push({
@@ -108,9 +115,7 @@ export default async function handler(req, res) {
       ok: true,
       messageId: info.messageId,
       photos_sent: photos.length,
-      certificate: true,
-      hasId: !!evidence.idPhoto,
-      hasIdUrl: !!evidence.idPhotoUrl
+      certificate: true
     });
   } catch (err) {
     console.error(err);
@@ -120,26 +125,37 @@ export default async function handler(req, res) {
 
 async function generateCertificate({ orderName, evidence, photos }) {
   const doc = await PDFDocument.create();
-  let page = doc.addPage([612, 792]);
+  let page = doc.addPage([612, 792]); // Letter
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
   const { width, height } = page.getSize();
   let y = height - 40;
 
+  // Header bar
   page.drawRectangle({ x: 0, y: height - 70, width, height: 70, color: rgb(0.77, 0.12, 0.23) });
   page.drawText('PLUMBING MARKET', { x: 40, y: height - 35, size: 18, font: fontBold, color: rgb(1, 1, 1) });
   page.drawText('Pickup Verification Certificate', { x: 40, y: height - 55, size: 11, font: font, color: rgb(1, 1, 1) });
 
   y = height - 100;
+
+  // Order info
   page.drawText(`Order: ${orderName}`, { x: 40, y, size: 14, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
   y -= 20;
   page.drawText(`Date: ${evidence.displayTime || new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto' })}`, { x: 40, y, size: 10, font: font, color: rgb(0.3, 0.3, 0.3) });
   y -= 18;
   page.drawText(`Person picking up: ${evidence.name || '—'}  (${evidence.role || 'Self'})`, { x: 40, y, size: 10, font: font, color: rgb(0.1, 0.1, 0.1) });
   y -= 16;
+  if (evidence.authorizedBy) {
+    page.drawText(`Authorized by: ${evidence.authorizedBy} (${evidence.authMethod || ''})`, { x: 40, y, size: 9, font: font, color: rgb(0.3, 0.3, 0.3) });
+    y -= 14;
+  }
   if (evidence.staff) {
     page.drawText(`Staff: ${evidence.staff}`, { x: 40, y, size: 9, font: font, color: rgb(0.3, 0.3, 0.3) });
+    y -= 14;
+  }
+  if (evidence.staffNotes) {
+    page.drawText(`Staff notes: ${evidence.staffNotes}`, { x: 40, y, size: 9, font: font, color: rgb(0.3, 0.3, 0.3) });
     y -= 14;
   }
 
@@ -147,13 +163,20 @@ async function generateCertificate({ orderName, evidence, photos }) {
   page.drawLine({ start: { x: 40, y }, end: { x: width - 40, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
   y -= 20;
 
+  // Items
   page.drawText('Items Confirmed for Pickup', { x: 40, y, size: 12, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+  y -= 14;
+  page.drawText('This order contains special order items', { x: 40, y, size: 8, font: font, color: rgb(0.4, 0.4, 0.4) });
   y -= 18;
+
   const items = evidence.items || [];
   for (const item of items.slice(0, 12)) {
     const title = (item.title || item.name || 'Item').slice(0, 45);
+    const sku = item.sku || '—';
+    const qty = item.quantity || 1;
+    const initial = item.initial || '—';
     page.drawText(`• ${title}`, { x: 40, y, size: 9, font: font, color: rgb(0.1, 0.1, 0.1) });
-    page.drawText(`SKU: ${item.sku || '—'}  Qty: ${item.quantity || 1}  Initials: ${item.initial || '—'}`, { x: 55, y: y - 12, size: 8, font: font, color: rgb(0.4, 0.4, 0.4) });
+    page.drawText(`SKU: ${sku}  Qty: ${qty}  Initials: ${initial}`, { x: 55, y: y - 12, size: 8, font: font, color: rgb(0.4, 0.4, 0.4) });
     y -= 28;
     if (y < 200) break;
   }
@@ -162,6 +185,7 @@ async function generateCertificate({ orderName, evidence, photos }) {
   page.drawLine({ start: { x: 40, y }, end: { x: width - 40, y }, thickness: 0.5, color: rgb(0.8, 0.8, 0.8) });
   y -= 20;
 
+  // Signature
   page.drawText('Customer Signature', { x: 40, y, size: 11, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
   y -= 10;
   if (evidence.signature && evidence.signature.startsWith('data:image')) {
@@ -172,13 +196,14 @@ async function generateCertificate({ orderName, evidence, photos }) {
         page.drawImage(sigImg, { x: 40, y: y - Math.min(dims.height, 60), width: Math.min(dims.width, 200), height: Math.min(dims.height, 60) });
         y -= Math.min(dims.height, 60) + 10;
       }
-    } catch (e) { console.error('sig', e.message); }
+    } catch (e) { console.error('sig embed', e.message); }
   } else {
     page.drawText('(Signature on file)', { x: 40, y: y - 15, size: 9, font: font, color: rgb(0.5, 0.5, 0.5) });
     y -= 25;
   }
 
-  if (y < 180) {
+  // Return policy acknowledgment
+  if (y < 160) {
     page = doc.addPage([612, 792]);
     y = page.getSize().height - 50;
   }
@@ -206,7 +231,9 @@ async function generateCertificate({ orderName, evidence, photos }) {
   }
   y -= 6;
   page.drawText('Full policy: https://www.plumbingmarket.ca/policies/refund-policy', { x: 40, y, size: 8, font: font, color: rgb(0.77, 0.12, 0.23) });
+  y -= 20;
 
+  // ID photo — prefer Shopify file URL, fall back to stored data URL
   const idPage = doc.addPage([612, 792]);
   idPage.drawText('Photo ID', { x: 40, y: 750, size: 14, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
   let idEmbedded = false;
@@ -247,29 +274,40 @@ async function generateCertificate({ orderName, evidence, photos }) {
     idPage.drawText('(ID photo could not be embedded)', { x: 40, y: 700, size: 10, font: font, color: rgb(0.5, 0.5, 0.5) });
   }
 
+  // Product photos
   if (photos?.length) {
-    const photoPage = doc.addPage([612, 792]);
-    photoPage.drawText('Product Photos (Staff)', { x: 40, y: 740, size: 14, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+    if (y < 200) {
+      page = doc.addPage([612, 792]);
+      y = page.getSize().height - 50;
+    }
+    page.drawText('Product Photos (Staff)', { x: 40, y, size: 12, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+    y -= 12;
     let x = 40;
-    let py = 720;
     for (const p of photos.slice(0, 3)) {
       if (!p.data || !p.data.startsWith('data:image')) continue;
       try {
         const img = await embedImage(doc, p.data);
         if (img) {
-          const dims = img.scale(0.25);
-          const h = Math.min(dims.height, 180);
-          const w = Math.min(dims.width, 220);
-          if (x + w > 550) { x = 40; py -= h + 15; }
-          photoPage.drawImage(img, { x, y: py - h, width: w, height: h });
-          x += w + 15;
+          const dims = img.scale(0.2);
+          const h = Math.min(dims.height, 140);
+          const w = Math.min(dims.width, 160);
+          if (x + w > width - 40) { x = 40; y -= h + 10; }
+          if (y - h < 60) {
+            page = doc.addPage([612, 792]);
+            y = page.getSize().height - 50;
+            x = 40;
+          }
+          page.drawImage(img, { x, y: y - h, width: w, height: h });
+          x += w + 10;
         }
-      } catch (e) { console.error('photo', e.message); }
+      } catch (e) { console.error('photo embed', e.message); }
     }
   }
 
+  // Footer
   page.drawText(`Evidence hash: ${(evidence.evidenceHash || '').slice(0, 32)}…`, { x: 40, y: 40, size: 7, font: font, color: rgb(0.5, 0.5, 0.5) });
   page.drawText('Plumbing Market · Vaughan, ON · 289-236-2378', { x: 40, y: 28, size: 7, font: font, color: rgb(0.5, 0.5, 0.5) });
+  page.drawText('This certificate confirms the customer initialed the items, signed the receipt, and provided photo ID.', { x: 40, y: 16, size: 6, font: font, color: rgb(0.6, 0.6, 0.6) });
 
   return await doc.save();
 }
