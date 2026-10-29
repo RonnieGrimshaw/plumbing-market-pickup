@@ -14,7 +14,6 @@ export default async function handler(req, res) {
 
   try {
     if (method === 'email' || (!method && email)) {
-      // Send email
       const user = process.env.SMTP_USER || 'info@plumbingmarket.ca';
       const pass = (process.env.SMTP_PASS || 'qyap gctt ggrd llxd').replace(/\s+/g, '');
 
@@ -27,14 +26,19 @@ export default async function handler(req, res) {
         from: `"Plumbing Market" <${user}>`,
         to: email,
         subject: `Your order ${orderId} is ready for pickup`,
-        text: `Hi ${name || 'there'},\n\nYour order ${orderId} is ready for pickup at Plumbing Market.\n\nPlease sign your digital pickup receipt here:\n${link}\n\nImportant: open the link in Safari or Chrome, not inside the email app.\n\nStore Location\nPlumbing Market\nVaughan, ON\nPhone: 289-236-2378\n\nThank you,\nPlumbing Market`,
+        text: `Hi ${name || 'there'},\n\nYour order ${orderId} is ready for pickup at Plumbing Market.\n\nPlease sign your digital pickup receipt here:\n${link}\n\nStore Location\nPlumbing Market\nVaughan, ON\nPhone: 289-236-2378\n\nThank you,\nPlumbing Market`,
         html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;color:#1a1a1a;line-height:1.5;">
           <h2 style="color:#c41e3a;margin:0 0 1rem;">Your order is ready</h2>
           <p>Hi ${name || 'there'},</p>
           <p>Your order <strong>${orderId}</strong> is ready for pickup.</p>
-          <p style="margin:1.5rem 0;"><a href="${link}" style="background:#c41e3a;color:#fff;padding:12px 24px;text-decoration:none;border-radius:8px;font-weight:bold;display:inline-block;">Sign Pickup Receipt</a></p>
-          <p style="background:#fff3cd;padding:10px 12px;border-radius:8px;font-size:0.9rem;">Open the link in <strong>Safari</strong> or <strong>Chrome</strong>, not inside the email app.</p>
-          <p style="color:#555;font-size:0.9rem;">Or copy this link:<br><a href="${link}">${link}</a></p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:1.5rem 0;">
+            <tr>
+              <td style="background:#c41e3a;border-radius:8px;text-align:center;">
+                <a href="${link}" target="_blank" style="background:#c41e3a;border:12px solid #c41e3a;color:#ffffff;text-decoration:none;font-weight:bold;display:inline-block;border-radius:8px;">Sign Pickup Receipt</a>
+              </td>
+            </tr>
+          </table>
+          <p style="color:#555;font-size:0.9rem;">Or copy this link:<br><a href="${link}" target="_blank">${link}</a></p>
           <hr style="border:none;border-top:1px solid #eee;margin:1.5rem 0;">
           <p style="font-size:0.9rem;color:#555;line-height:1.7;">
             <strong>Plumbing Market</strong><br>
@@ -54,7 +58,6 @@ export default async function handler(req, res) {
         messageId: info.messageId
       });
     } else {
-      // Send SMS via Aircall
       let to = (phone || '').trim();
       if (!to.startsWith('+')) {
         to = '+1' + to.replace(/\D/g, '');
