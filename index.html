@@ -280,6 +280,9 @@
         if (!data.ok) throw new Error(data.error || 'Failed to load order');
         document.getElementById('order-num').textContent = data.order_name;
         document.getElementById('confirm-order-number').value = (data.order_name || token || '').replace('#', '');
+        if (data.customer_name && !document.getElementById('pickup-name').value) {
+          document.getElementById('pickup-name').value = data.customer_name;
+        }
         orderItems = data.items || [];
         renderItems();
         document.getElementById('loading').style.display = 'none';
