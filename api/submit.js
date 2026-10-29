@@ -97,7 +97,6 @@ export default async function handler(req, res) {
     }
 
     if (idPhoto && idPhoto.startsWith('data:image')) {
-      // Keep existing metafield storage
       metafields.push({
         ownerId: order.id,
         namespace: 'pickup',
@@ -105,22 +104,6 @@ export default async function handler(req, res) {
         type: 'multi_line_text_field',
         value: idPhoto
       });
-
-      // Also upload as a Shopify file so the PDF can load a clean image
-      try {
-        const fileUrl = await uploadIdToShopify(idPhoto, order.name);
-        if (fileUrl) {
-          metafields.push({
-            ownerId: order.id,
-            namespace: 'pickup',
-            key: 'id_photo_url',
-            type: 'single_line_text_field',
-            value: fileUrl
-          });
-        }
-      } catch (e) {
-        console.error('ID file upload failed:', e.message);
-      }
     }
 
     const metaResult = await shopifyGraphql(metafieldMutation, { metafields });
