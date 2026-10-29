@@ -187,6 +187,8 @@ async function generateCertificate({ orderName, evidence, photos }) {
 
   // Signature
   page.drawText('Customer Signature', { x: 40, y, size: 11, font: fontBold, color: rgb(0.1, 0.1, 0.1) });
+  y -= 12;
+  page.drawText('By signing, the customer confirms they received the product in good condition.', { x: 40, y, size: 8, font: font, color: rgb(0.2, 0.2, 0.2) });
   y -= 10;
   if (evidence.signature && evidence.signature.startsWith('data:image')) {
     try {
