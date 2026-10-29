@@ -165,7 +165,6 @@
       document.getElementById('staffName').addEventListener('input', (e) => {
         localStorage.setItem('staffName', e.target.value.trim());
       });
-      toggleContactFields();
 
       // If coming from signing page, go straight to photos
       const params = new URLSearchParams(window.location.search);
@@ -186,10 +185,28 @@
       window.location.href = `/?token=${encodeURIComponent(order)}&staff=${encodeURIComponent(staff)}&notes=${encodeURIComponent(notes)}&mode=staff`;
     }
 
-    function toggleContactFields() {
-      const method = document.getElementById('method').value;
-      document.getElementById('phone-field').style.display = method === 'sms' ? 'block' : 'none';
-      document.getElementById('email-field').style.display = method === 'email' ? 'block' : 'none';
+    function toggleContactFields() {}
+
+    async function beginSend() {
+      const orderId = document.getElementById('orderId').value.trim();
+      const result = document.getElementById('result');
+      if (!orderId) { alert('Enter the order number'); return; }
+      document.getElementById('send-step1').querySelector('button').disabled = true;
+      document.getElementById('send-step1').querySelector('button').textContent = 'Loading…';
+      try {
+        const res = await fetch(`/api/order-details?token=${encodeURIComponent(orderId)}`);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Order not found');
+        document.getElementById('name').value = data.customer_name || '';
+        document.getElementById('email').value = data.email || '';
+        document.getElementById('phone').value = data.phone || '';
+        document.getElementById('send-step1').style.display = 'none';
+        document.getElementById('send-step2').style.display = 'block';
+      } catch (err) {
+        alert('Could not load order: ' + err.message);
+      }
+      document.getElementById('send-step1').querySelector('button').disabled = false;
+      document.getElementById('send-step1').querySelector('button').textContent = 'Begin Pickup';
     }
 
     async function loadOrderContact() {
