@@ -30,7 +30,6 @@ export default async function handler(req, res) {
                     sku
                     quantity
                     image { url altText }
-                    variant { image { url } }
                   }
                 }
               }
@@ -93,7 +92,7 @@ export default async function handler(req, res) {
         variantTitle: e.node.variantTitle,
         sku: e.node.sku,
         quantity: e.node.quantity,
-        image: e.node.image?.url || e.node.variant?.image?.url || null
+        image: e.node.image?.url || null
       }));
     }
 
