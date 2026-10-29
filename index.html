@@ -242,7 +242,8 @@
       <h2>Photo ID</h2>
       <p>Take a clear photo of the front of your driver’s licence, passport, or Ontario Photo Card.</p>
       <p>Take a photo now, or choose one from your photos.</p>
-      <input type="file" accept="image/*,.heic,.heif" id="id-input" onchange="previewId(this)" style="margin-top:0.5rem;">
+      <input type="file" accept="image/*" id="id-input" onchange="previewId(this)" style="margin-top:0.5rem;font-size:16px;">
+      <p id="browser-hint" style="display:none;color:#a01830;font-size:0.85rem;margin-top:0.5rem;">If the photo will not submit, open this page in Safari or Chrome (tap the share icon, then Open in Browser).</p>
       <img id="id-preview" style="max-width:100%;border-radius:10px;margin-top:0.75rem;display:none;">
       <div id="id-error" class="error" style="display:none;">Photo ID is required.</div>
       <button id="submit-btn" onclick="submitPickup()">Submit Receipt</button>
@@ -389,6 +390,9 @@
     window.addEventListener('load', () => {
       resizeSig();
       loadOrder();
+      const ua = navigator.userAgent || '';
+      const inApp = /FBAN|FBAV|Instagram|Outlook|Gmail|Yahoo|LinkedIn/i.test(ua) || (ua.includes('Safari') && !ua.includes('Chrome'));
+      if (inApp || /Edg\//.test(ua)) document.getElementById('browser-hint').style.display = 'block';
       const savedName = sessionStorage.getItem('pickupName');
       if (savedName) document.getElementById('pickup-name').value = savedName;
     });
@@ -435,53 +439,50 @@
       document.getElementById('id-error').style.display = 'none';
       compressedId = null;
       const url = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(url);
       img.src = url;
       img.style.display = 'block';
       compressImage(file, 140).then(dataUrl => { compressedId = dataUrl; }).catch(err => {
-        document.getElementById('id-error').textContent = err.message || 'Could not read this photo. Try a JPG or PNG.';
+        document.getElementById('id-error').textContent = err.message || 'Could not read this photo.';
         document.getElementById('id-error').style.display = 'block';
+        document.getElementById('browser-hint').style.display = 'block';
       });
     }
 
     function compressImage(file, maxWidth = 140) {
       return new Promise((resolve, reject) => {
-        const done = (source) => {
-          const canvas = document.createElement('canvas');
-          const w = source.width || source.naturalWidth;
-          const h = source.height || source.naturalHeight;
-          const scale = Math.min(1, maxWidth / w);
-          canvas.width = Math.max(1, Math.round(w * scale));
-          canvas.height = Math.max(1, Math.round(h * scale));
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-          let dataUrl = '';
-          try { dataUrl = canvas.toDataURL('image/png'); } catch {}
-          if (!dataUrl || dataUrl.length < 100) {
-            try { dataUrl = canvas.toDataURL('image/jpeg', 0.5); } catch {}
-          }
-          if (!dataUrl || dataUrl.length < 100) {
-            reject(new Error('Could not process this photo. Try a JPG or PNG.'));
-            return;
-          }
-          resolve(dataUrl);
-        };
-
-        if (typeof createImageBitmap === 'function') {
-          createImageBitmap(file).then(bitmap => { done(bitmap); }).catch(() => {
-            const url = URL.createObjectURL(file);
-            const img = new Image();
-            img.onload = () => { URL.revokeObjectURL(url); done(img); };
-            img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read this photo. Try a JPG or PNG.')); };
-            img.src = url;
-          });
-          return;
-        }
         const url = URL.createObjectURL(file);
         const img = new Image();
-        img.onload = () => { URL.revokeObjectURL(url); done(img); };
-        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read this photo. Try a JPG or PNG.')); };
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const scale = Math.min(1, maxWidth / img.width);
+            canvas.width = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            let dataUrl = '';
+            try { dataUrl = canvas.toDataURL('image/png'); } catch (e) {}
+            if (!dataUrl || dataUrl.length < 100) {
+              try { dataUrl = canvas.toDataURL('image/jpeg', 0.6); } catch (e) {}
+            }
+            URL.revokeObjectURL(url);
+            if (!dataUrl || dataUrl.length < 100) {
+              reject(new Error('Could not process this photo. Try a JPG or PNG.'));
+              return;
+            }
+            resolve(dataUrl);
+          } catch (e) {
+            URL.revokeObjectURL(url);
+            reject(new Error('Could not process this photo. Try a JPG or PNG.'));
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Could not read this photo. Use a JPG or PNG, or open this page in your browser.'));
+        };
         img.src = url;
       });
     }
