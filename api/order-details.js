@@ -20,6 +20,9 @@ export default async function handler(req, res) {
             node {
               id
               name
+              email
+              phone
+              customer { firstName lastName email phone }
               lineItems(first: 50) {
                 edges {
                   node {
@@ -66,6 +69,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
+    // Prefer items from fulfillments marked READY_FOR_PICKUP
     let readyItems = [];
     for (const f of order.fulfillments || []) {
       if (f.displayStatus === 'READY_FOR_PICKUP' || f.displayStatus === 'PICKED_UP') {
@@ -84,6 +88,7 @@ export default async function handler(req, res) {
       }
     }
 
+    // Fallback: all line items if none are marked ready
     if (readyItems.length === 0) {
       readyItems = order.lineItems.edges.map(e => ({
         id: e.node.id,
@@ -99,6 +104,9 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       order_name: order.name,
+      email: order.email || order.customer?.email || '',
+      phone: order.phone || order.customer?.phone || '',
+      customer_name: [order.customer?.firstName, order.customer?.lastName].filter(Boolean).join(' ') || '',
       items: readyItems
     });
   } catch (err) {
