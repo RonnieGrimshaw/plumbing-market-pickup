@@ -1,6 +1,7 @@
 // Staff uploads product photos — generates professional PDF certificate and emails it
 import nodemailer from 'nodemailer';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { Jimp } from 'jimp';
 import { shopifyGraphql } from './shopify.js';
 
 export default async function handler(req, res) {
@@ -321,7 +322,7 @@ async function embedImage(doc, dataUrl) {
   while (base64.length % 4 !== 0) base64 += '=';
   let bytes;
   try { bytes = Buffer.from(base64, 'base64'); } catch { return null; }
-  if (!bytes || bytes.length < 100) return null;
+  if (!bytes || bytes.length < 50) return null;
 
   const isPng = bytes[0] === 0x89 && bytes[1] === 0x50;
   const isJpg = bytes[0] === 0xFF && bytes[1] === 0xD8;
@@ -329,11 +330,17 @@ async function embedImage(doc, dataUrl) {
   try {
     if (isPng) return await doc.embedPng(bytes);
     if (isJpg) return await doc.embedJpg(bytes);
-    try { return await doc.embedJpg(bytes); } catch {}
-    try { return await doc.embedPng(bytes); } catch {}
-    return null;
   } catch (e) {
-    console.error('embed failed', e.message, 'len', bytes.length);
+    console.error('direct embed failed', e.message);
+  }
+
+  // Re-encode to PNG so pdf-lib can always embed it
+  try {
+    const img = await Jimp.read(bytes);
+    const png = await img.getBuffer('image/png');
+    return await doc.embedPng(png);
+  } catch (e) {
+    console.error('reencode failed', e.message);
     return null;
   }
 }
