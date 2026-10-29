@@ -441,7 +441,7 @@
         probe.onload = () => {
           img.src = probe.src;
           img.style.display = 'block';
-          compressImage(file, 240).then(dataUrl => { compressedId = dataUrl; }).catch(() => {});
+          compressImage(file, 140).then(dataUrl => { compressedId = dataUrl; }).catch(() => {});
         };
         probe.onerror = () => {
           document.getElementById('id-error').textContent = 'This photo format is not supported. Please take a new photo or choose a JPG/PNG.';
@@ -453,8 +453,9 @@
       reader.readAsDataURL(file);
     }
 
-    function compressImage(file, maxWidth = 180) {
+    function compressImage(file, maxWidth = 140) {
       return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
@@ -462,18 +463,20 @@
           canvas.width = Math.max(1, Math.round(img.width * scale));
           canvas.height = Math.max(1, Math.round(img.height * scale));
           const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.45);
+          URL.revokeObjectURL(url);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
           if (!dataUrl || dataUrl.length < 100) {
             reject(new Error('Could not process ID photo. Try a different photo.'));
             return;
           }
           resolve(dataUrl);
         };
-        img.onerror = () => reject(new Error('Could not read ID photo. Use a JPG or PNG.'));
-        img.src = URL.createObjectURL(file);
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          reject(new Error('Could not read ID photo. Use a JPG or PNG.'));
+        };
+        img.src = url;
       });
     }
 
@@ -514,7 +517,7 @@
 
       let idPhoto = compressedId;
       if (!idPhoto && idInput.files[0]) {
-        try { idPhoto = await compressImage(idInput.files[0], 180); }
+        try { idPhoto = await compressImage(idInput.files[0], 140); }
         catch (e) {
           idError.textContent = e.message || 'Could not read the ID photo.';
           idError.style.display = 'block';
