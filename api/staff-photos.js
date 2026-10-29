@@ -46,19 +46,18 @@ export default async function handler(req, res) {
     if (order?.idPhoto?.value) evidence.idPhoto = order.idPhoto.value;
     if (order?.idPhotoUrl?.value) evidence.idPhotoUrl = order.idPhotoUrl.value;
 
-    // If evidence has no real items, pull them from the order
-    if (!evidence.items || evidence.items.length === 0 || evidence.items[0]?.title === 'Test') {
-      try {
-        const detailsRes = await fetch(`${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'https://pickup.plumbingmarket.ca'}/api/order-details?token=${encodeURIComponent(orderName.replace('#',''))}`);
-        const details = await detailsRes.json();
-        if (details.ok && details.items?.length) {
-          evidence.items = details.items.map(it => ({
-            ...it,
-            initial: (evidence.items || []).find(e => e.id === it.id)?.initial || '—'
-          }));
-        }
-      } catch {}
-    }
+    // Always pull the real order items and overlay any stored initials
+    try {
+      const detailsRes = await fetch(`https://pickup.plumbingmarket.ca/api/order-details?token=${encodeURIComponent(orderName.replace('#',''))}`);
+      const details = await detailsRes.json();
+      if (details.ok && details.items?.length) {
+        const stored = evidence.items || [];
+        evidence.items = details.items.map(it => ({
+          ...it,
+          initial: stored.find(e => e.id === it.id || e.sku === it.sku)?.initial || stored[0]?.initial || '—'
+        }));
+      }
+    } catch {}
 
     // Generate PDF
     const pdfBytes = await generateCertificate({
