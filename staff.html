@@ -1,1 +1,242 @@
-SIMPLIFIED_STAFF_HOME
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff Tools — Plumbing Market</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Inter', system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; min-height: 100vh; }
+    .header { background: white; border-bottom: 1px solid #eee; padding: 0.5rem 1.25rem; display: flex; align-items: center; justify-content: space-between; }
+    .header-right { font-size: 0.8rem; color: #666; text-align: right; }
+    .container { max-width: 420px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+    h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .subtitle { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .card { background: white; border-radius: 16px; padding: 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    label { display: block; font-size: 0.85rem; font-weight: 500; margin-top: 0.6rem; }
+    input[type="text"], input[type="file"], select {
+      width: 100%; padding: 0.75rem; border: 1.5px solid #ddd; border-radius: 10px; font-size: 1.05rem; margin-top: 0.3rem;
+    }
+    input:focus, select:focus { outline: none; border-color: #c41e3a; }
+    button.primary {
+      display: block; width: 100%; padding: 1rem; font-size: 1.05rem; font-weight: 600;
+      border: none; border-radius: 12px; background: #c41e3a; color: white; margin-top: 1rem; cursor: pointer;
+    }
+    button.primary:hover { background: #a01830; }
+    button.back {
+      display: block; width: 100%; background: #444; border: none; color: white; font-size: 1.05rem;
+      font-weight: 600; padding: 0.85rem 1rem; cursor: pointer; margin-bottom: 0.75rem; border-radius: 12px; text-align: center;
+    }
+    button.back:hover { background: #333; }
+    #result { margin-top: 1rem; padding: 0.8rem; background: #f0f0f0; border-radius: 10px; font-size: 0.8rem; white-space: pre-wrap; }
+    .photo-preview { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.6rem 0; }
+    .photo-preview img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; }
+    .footer-note { text-align: center; font-size: 0.75rem; color: #999; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="https://cdn.shopify.com/s/files/1/0654/5827/4526/files/Plumbing_Market_header_logo_1200_1.png?v=1793153912" alt="Plumbing Market" style="height:90px;width:auto;cursor:pointer;" onclick="window.location.href='/staff.html'">
+    <div class="header-right">Staff<br>Tools</div>
+  </div>
+
+  <div class="container">
+    <!-- HOME -->
+    <div id="home" class="screen active">
+      <h1>Begin Pickup</h1>
+      <div class="subtitle">Enter the order number</div>
+      <div class="card">
+        <label>Order number<br><input id="orderId" type="text" placeholder="e.g. 6984" autocomplete="off"></label>
+        <button class="primary" onclick="beginSend()">Begin Pickup</button>
+      </div>
+    </div>
+
+    <!-- SEND / CONFIRM -->
+    <div id="send" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card" id="send-step2">
+        <h2>Confirm Contact</h2>
+        <p style="color:#555;font-size:0.9rem;">Details loaded from the order. Edit if someone else is picking up.</p>
+        <label>Name<br><input id="name" type="text"></label>
+        <label>Email<br><input id="email" type="text"></label>
+        <label>Phone<br><input id="phone" type="text"></label>
+        <label>Method
+          <select id="method">
+            <option value="email">Email</option>
+            <option value="sms">Text (SMS)</option>
+          </select>
+        </label>
+        <button class="primary" onclick="send()">Send Link</button>
+        <div id="result"></div>
+      </div>
+    </div>
+
+    <!-- PHOTOS -->
+    <div id="photos" class="screen">
+      <button class="back" onclick="show('home')">← Back</button>
+      <div class="card">
+        <h2>Take Product Photos</h2>
+        <p style="color:#555;font-size:0.9rem;">Select or take at least 3 photos of the items. You can choose multiple at once.</p>
+        <label>Order number<br><input id="photoOrder" type="text" placeholder="1001"></label>
+        <input type="file" id="photoInput" accept="image/*" multiple onchange="previewPhotos(this)">
+        <div id="photoPreviews" class="photo-preview"></div>
+        <div id="photoCount" style="font-size:0.85rem;color:#666;margin:0.4rem 0;"></div>
+        <button class="primary" onclick="uploadPhotos()">Send Photos & Certificate</button>
+        <button class="back" style="display:block;width:100%;text-align:center;margin-top:0.5rem;" onclick="goBackToReceipt()">← Back to Receipt</button>
+        <div id="photoResult"></div>
+      </div>
+    </div>
+
+    <div class="footer-note">Plumbing Market · Vaughan, ON</div>
+  </div>
+
+  <script>
+    function show(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+    window.addEventListener('load', () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('photos') === '1') {
+        const order = params.get('order') || '';
+        if (order) document.getElementById('photoOrder').value = order;
+        show('photos');
+      }
+    });
+
+    async function beginSend() {
+      const orderId = document.getElementById('orderId').value.trim();
+      if (!orderId) { alert('Enter the order number'); return; }
+      const btn = document.querySelector('#home button');
+      btn.disabled = true;
+      btn.textContent = 'Loading…';
+      try {
+        const res = await fetch(`/api/order-details?token=${encodeURIComponent(orderId)}`);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || 'Order not found');
+        document.getElementById('name').value = data.customer_name || '';
+        document.getElementById('email').value = data.email || '';
+        document.getElementById('phone').value = data.phone || '';
+        show('send');
+      } catch (err) {
+        alert('Could not load order: ' + err.message);
+      }
+      btn.disabled = false;
+      btn.textContent = 'Begin Pickup';
+    }
+
+    async function send() {
+      const result = document.getElementById('result');
+      result.textContent = 'Sending…';
+      const body = {
+        orderId: document.getElementById('orderId').value,
+        phone: document.getElementById('phone').value,
+        email: document.getElementById('email').value,
+        name: document.getElementById('name').value,
+        method: document.getElementById('method').value
+      };
+      try {
+        const res = await fetch('/api/send-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        result.textContent = data.ok ? 'Link sent!' : JSON.stringify(data, null, 2);
+        if (data.ok) {
+          const order = document.getElementById('orderId').value.trim();
+          window.location.href = `/wait.html?order=${encodeURIComponent(order)}`;
+        }
+      } catch (err) {
+        result.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    let selectedPhotos = [];
+
+    function previewPhotos(input) {
+      selectedPhotos = Array.from(input.files);
+      const container = document.getElementById('photoPreviews');
+      container.innerHTML = '';
+      selectedPhotos.forEach(file => {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        container.appendChild(img);
+      });
+      const count = selectedPhotos.length;
+      document.getElementById('photoCount').textContent = count + ' photo' + (count === 1 ? '' : 's') + ' selected' + (count < 3 ? ' (need at least 3)' : '');
+    }
+
+    function goBackToReceipt() {
+      const order = document.getElementById('photoOrder').value.trim();
+      if (order) window.location.href = `/?token=${encodeURIComponent(order)}`;
+      else show('home');
+    }
+
+    async function uploadPhotos() {
+      const result = document.getElementById('photoResult');
+      const files = document.getElementById('photoInput').files;
+      if (!files.length || files.length < 3) {
+        result.textContent = 'Please take at least 3 photos.';
+        return;
+      }
+      result.textContent = 'Uploading…';
+      const photos = [];
+      for (const file of files) {
+        try {
+          const dataUrl = await compressPhoto(file);
+          photos.push({ name: file.name, data: dataUrl });
+        } catch (e) {
+          result.textContent = 'Could not read a photo. Try again.';
+          return;
+        }
+      }
+      try {
+        const res = await fetch('/api/staff-photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: document.getElementById('photoOrder').value, photos })
+        });
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch {
+          result.textContent = 'Server error. Please try again.';
+          return;
+        }
+        if (data.ok) {
+          result.innerHTML = '<strong style="color:#1a7f37;font-size:1.1rem;">✓ Pickup Complete</strong><br>Product photos submitted and certificate emailed.<br><span style="color:#666;">Returning to home…</span>';
+          setTimeout(() => { window.location.href = '/staff.html'; }, 3000);
+        } else {
+          result.textContent = data.error || 'Failed to send.';
+        }
+      } catch (err) {
+        result.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    function compressPhoto(file, maxWidth = 400) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const scale = Math.min(1, maxWidth / img.width);
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', 0.45));
+        };
+        img.onerror = () => reject(new Error('bad image'));
+        img.src = URL.createObjectURL(file);
+      });
+    }
+  </script>
+</body>
+</html>
