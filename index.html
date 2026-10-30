@@ -119,7 +119,7 @@
     let orderItems = [];
     let initials = {};
     let compressedId = null;
-    let sigCanvas, sigCtx, drawing = false;
+    let sigCanvas, sigCtx, drawing = false, hasSigned = false;
 
     async function loadOrder() {
       try {
@@ -158,6 +158,10 @@
     }
 
     function go(step) {
+            if (step === 3 && !hasSigned) {
+        alert('Please sign the receipt before continuing.');
+        return;
+      }
       for (let i = 1; i <= 4; i++) {
         document.getElementById('step' + i).style.display = i === step ? 'block' : 'none';
         document.getElementById('p' + i).classList.toggle('active', i <= step);
@@ -180,7 +184,7 @@
         return { x: t.clientX - r.left, y: t.clientY - r.top };
       }
       function start(e) { drawing = true; const p = pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x, p.y); e.preventDefault(); }
-      function move(e) { if (!drawing) return; const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); e.preventDefault(); }
+      function move(e) { if (!drawing) return; const p = pos(e); sigCtx.lineTo(p.x, p.y); sigCtx.stroke(); hasSigned = true; e.preventDefault(); }
       function end() { drawing = false; }
       sigCanvas.onmousedown = start;
       sigCanvas.onmousemove = move;
@@ -191,7 +195,7 @@
       sigCanvas.ontouchend = end;
     }
 
-    function clearSignature() { sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height); }
+    function clearSignature() { sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height); hasSigned = false; }
 
     document.getElementById('role').onchange = function() {
       document.getElementById('auth-fields').style.display = this.value === 'Authorized' ? 'block' : 'none';
