@@ -49,7 +49,7 @@
   <div class="container">
     <h1>Pickup Receipt</h1>
     <div class="subtitle">Order <strong id="order-num">Loading…</strong></div>
-    <button onclick="window.location.href='/staff.html'" style="background:#444;margin-bottom:1rem;">← Staff Home</button>
+    <button id="staff-home-btn" onclick="window.location.href='/staff.html'" style="background:#444;margin-bottom:1rem;display:none;">← Staff Home</button>
     <div class="progress">
       <div class="step active" id="p1"></div>
       <div class="step" id="p2"></div>
@@ -158,6 +158,13 @@
     }
 
     function go(step) {
+            if (step === 2) {
+        const missing = orderItems.some(item => !initials[item.id] || String(initials[item.id]).trim() === '');
+        if (missing) {
+          alert('Please initial every item before continuing.');
+          return;
+        }
+      }
             if (step === 3 && !hasSigned) {
         alert('Please sign the receipt before continuing.');
         return;
@@ -279,7 +286,7 @@
     async function submitPickup() {
       const idInput = document.getElementById('id-input');
       const idError = document.getElementById('id-error');
-      if (!idInput.files[0] && !compressedId) { idError.style.display = 'block'; return; }
+      if (!idInput.files[0] && !compressedId) { alert('You must upload a photo of your ID.'); idError.style.display = 'block'; return; }
       const btn = document.getElementById('submit-btn');
       btn.disabled = true;
       btn.textContent = 'Submitting…';
@@ -343,7 +350,7 @@
       }
     }
 
-    if (token) loadOrder();
+    if (mode === 'staff') {   const sh = document.getElementById('staff-home-btn');   if (sh) sh.style.display = 'block'; } if (token) loadOrder();
   </script>
 </body>
 </html>
