@@ -218,7 +218,7 @@
       img.onload = () => URL.revokeObjectURL(url);
       img.src = url;
       img.style.display = 'block';
-      compressImage(file, 140).then(dataUrl => { compressedId = dataUrl; }).catch(err => {
+      compressImage(file, 900).then(dataUrl => { compressedId = dataUrl; }).catch(err => {
         document.getElementById('id-error').textContent = err.message || 'Could not read this photo.';
         document.getElementById('id-error').style.display = 'block';
       });
@@ -243,7 +243,7 @@
               ctx.fillRect(0, 0, canvas.width, canvas.height);
               ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
               let dataUrl = '';
-              try { dataUrl = canvas.toDataURL('image/jpeg', 0.65); } catch (e) {}
+              try { dataUrl = canvas.toDataURL('image/jpeg', 0.85); } catch (e) {}
               if (!dataUrl || dataUrl.length < 100) {
                 try { dataUrl = canvas.toDataURL('image/png'); } catch (e) {}
               }
