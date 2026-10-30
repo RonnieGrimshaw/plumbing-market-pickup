@@ -289,6 +289,7 @@
       const confirmOrderName = document.getElementById('confirm-order-number').value.trim();
       const authorizedBy = document.getElementById('authorized-by')?.value.trim() || '';
       const authMethod = document.getElementById('auth-method')?.value || '';
+      if (!hasSigned) { alert('Please sign the receipt before submitting.'); return; }
       const signature = compressSignature(sigCanvas);
       let idPhoto = compressedId;
       if (!idPhoto && idInput.files[0]) {
